@@ -20,6 +20,14 @@ class TetFile:
     def __getattr__(self, name: str) -> Any:
         return getattr(self._inner, name)
 
+    def summary(self) -> dict[str, Any]:
+        """Catalog + footer summary (`TetFileSummaryV1`), same JSON as `tet info --json`."""
+        return json.loads(self._inner.summary_json())
+
+    def info(self) -> dict[str, Any]:
+        """Alias for [`summary()`] (parity with `tet info --json`)."""
+        return self.summary()
+
     def query(self, query: Any) -> dict[str, Any]:
         return json.loads(self._inner.query(query))
 

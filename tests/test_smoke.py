@@ -24,6 +24,15 @@ def test_versions() -> None:
     assert tet.core_version()
 
 
+def test_summary_and_info(sample_path: Path) -> None:
+    f = tet.open(sample_path)
+    summary = f.summary()
+    assert f.info() == summary
+    names = [d["name"] for d in summary["datasets"]]
+    assert "temperature" in names
+    assert "superblock" in summary
+
+
 def test_open_and_mean(sample_path: Path) -> None:
     f = tet.open(sample_path)
     assert f.path.endswith("sample.tet")

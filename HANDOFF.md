@@ -61,7 +61,7 @@ Goal: parity with common `tet query -t … -x` embedder paths without hand-rolle
 
 - [x] `query()` → return **`dict`** (parsed from Rust JSON in Python facade)
 - [ ] Optional: `query_execute(doc, preview=0, device=None)` mapping `ExecuteQueryOptions` + `execution.device`
-- [ ] `info` / `summary`: Pythonic `FileSummary` (wrap `summary_json()` or add Rust helpers)
+- [x] `info()` / `summary()` → **`dict`** (parsed `summary_json()`; parity with `tet info --json`)
 - [ ] `plan_only(doc)` → read plan without full execute
 - [ ] Typed helpers: `mean(dataset, axes=...)`, `sum(...)`, selection slices — build `QueryDocument` in Python or thin Rust exports
 - [ ] Document query schema → link `tetration/fixtures/queries/`
