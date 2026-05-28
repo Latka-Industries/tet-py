@@ -31,9 +31,24 @@ class Dataset:
         *,
         path: Path | str | None = None,
     ) -> int:
-        """Resolve ``axis`` to a 0-based index (int, negative index, or ``dim_names`` label).
+        """Resolve an axis label to a 0-based dimension index.
 
-        Raises :class:`~tet.UnknownAxisError` when out of range or name unknown.
+        Parameters
+        ----------
+        axis : int or str
+            Non-negative or negative index, or a name from ``dim_names``.
+        path : path-like, optional
+            Shown in :class:`~tet.UnknownAxisError` messages.
+
+        Returns
+        -------
+        int
+            Axis index in ``0 .. ndim-1``.
+
+        Raises
+        ------
+        UnknownAxisError
+            Index out of range or unknown name (or no ``dim_names`` on this dataset).
         """
         if isinstance(axis, int):
             idx = axis + self.ndim if axis < 0 else axis
@@ -73,7 +88,19 @@ def dataset_from_summary(
     record: Mapping[str, Any],
     dim_names: Sequence[str] | None = None,
 ) -> Dataset:
-    """Build a :class:`Dataset` from a catalog JSON record plus optional footer names."""
+    """Build a :class:`Dataset` from a catalog JSON record.
+
+    Parameters
+    ----------
+    record : mapping
+        One entry from ``summary["datasets"]`` (name, shape, dtype, chunk_shape).
+    dim_names : sequence of str, optional
+        Footer ``metadata.datasets[name].dim_names`` when present.
+
+    Returns
+    -------
+    Dataset
+    """
     shape = tuple(int(x) for x in record["shape"])
     chunk_shape = tuple(int(x) for x in record["chunk_shape"])
     names = tuple(dim_names) if dim_names else None

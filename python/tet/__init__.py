@@ -27,18 +27,46 @@ __version__: str = _native.__version__
 
 
 def typing_stub(path: str | PathLike[str]) -> str:
-    """Return a ``.pyi`` snippet with ``Literal`` dataset (and axis) names for one file.
+    """Build a ``.pyi`` snippet with ``Literal`` names for one ``.tet`` file.
 
-    Save the output next to your code (e.g. ``mydata_tet.pyi``) so Pyright/Pylance can
-    autocomplete names for that specific ``.tet`` path. Names are not known statically
-    without opening the file.
+    Parameters
+    ----------
+    path : str or path-like
+        Path to the ``.tet`` file to introspect (opens read-only, then closes).
+
+    Returns
+    -------
+    str
+        Python source for optional IDE stubs (dataset names; axis ``Literal``s when
+        footer ``dim_names`` exist). Save to e.g. ``mydata_tet.pyi`` in your project.
+
+    Raises
+    ------
+    OSError, CatalogError
+        Same as :func:`open`.
     """
     with TetFile.open(path) as f:
         return f.typing_stub()
 
 
 def open(path: str | PathLike[str]) -> TetFile:
-    """Open a ``.tet`` file read-only (mmap). Alias for :meth:`TetFile.open`."""
+    """Open a ``.tet`` file read-only (mmap).
+
+    Parameters
+    ----------
+    path : str or path-like
+        Filesystem path; ``~`` expanded.
+
+    Returns
+    -------
+    TetFile
+        See :meth:`TetFile.open`.
+
+    Raises
+    ------
+    OSError, CatalogError
+        See :meth:`TetFile.open`.
+    """
     return TetFile.open(path)
 
 

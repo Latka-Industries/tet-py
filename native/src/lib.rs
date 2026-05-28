@@ -1,4 +1,7 @@
 //! PyO3 extension: thin wrapper over the `tetration` crate.
+//!
+//! Python sees `tet._native`: `open`, `TetFile`, `TetError`, `CatalogError`, `core_version`.
+//! Query documents are parsed/validated in Rust; responses are JSON strings for the pure-Python layer.
 
 use std::path::PathBuf;
 
@@ -19,6 +22,7 @@ create_exception!(
     "`.tet` catalog read error (layout, index, codec)."
 );
 
+/// Map a `tetration::query::TetError` to the appropriate Python exception.
 fn tet_err(err: QueryError) -> PyErr {
     match err {
         QueryError::Catalog(catalog) => catalog_err(catalog),
@@ -26,10 +30,15 @@ fn tet_err(err: QueryError) -> PyErr {
     }
 }
 
+/// Map a catalog read failure to [`CatalogError`].
 fn catalog_err(err: tetration::catalog::CatalogError) -> PyErr {
     CatalogError::new_err(err.to_string())
 }
 
+/// Parse and validate a query from Python (`str`, `dict`, or other JSON-serializable value).
+///
+/// Accepts a JSON string, `str`, or any object passed through `json.dumps`.
+/// Runs `validate_query` before returning.
 fn parse_document(py: Python<'_>, query: &Bound<'_, PyAny>) -> PyResult<QueryDocument> {
     if let Ok(s) = query.extract::<String>() {
         let doc = parse_query_json(&s).map_err(tet_err)?;
@@ -48,13 +57,21 @@ fn parse_document(py: Python<'_>, query: &Bound<'_, PyAny>) -> PyResult<QueryDoc
     Ok(doc)
 }
 
-/// Open `.tet` read-only (mmap); keeps the file handle alive for the object lifetime.
+/// Read-only mmap handle to one `.tet` file (catalog + query engine).
+///
+/// Construct via [`open`]. The underlying file mapping stays alive for the object's lifetime.
 #[pyclass(name = "TetFile")]
 struct PyTetFile {
     inner: CoreTetFile,
 }
 
 impl PyTetFile {
+    /// Parse `query`, run or plan per `options`, serialize [`QueryResponse`] to JSON.
+    ///
+    /// # Errors
+    ///
+    /// * [`TetError`] — parse, validation, or execution failure
+    /// * [`CatalogError`] — catalog errors surfaced through query path
     fn execute_query_json(
         &self,
         py: Python<'_>,
@@ -76,47 +93,97 @@ impl PyTetFile {
 
 #[pymethods]
 impl PyTetFile {
+    /// Resolved filesystem path to the open `.tet` file.
     #[getter]
     fn path(&self) -> String {
         self.inner.path().display().to_string()
     }
 
-    /// Catalog dataset names.
+    /// Dataset names from the catalog (declaration order).
+    ///
+    /// # Errors
+    ///
+    /// [`CatalogError`] if the catalog cannot be read.
     fn datasets(&self) -> PyResult<Vec<String>> {
         let records = self.inner.datasets().map_err(catalog_err)?;
         Ok(records.into_iter().map(|r| r.name).collect())
     }
 
-    /// Footer + catalog summary as JSON.
+    /// Footer metadata and catalog summary as a JSON string.
+    ///
+    /// # Returns
+    ///
+    /// JSON object suitable for `json.loads` (datasets, dtypes, chunking, footer fields).
+    ///
+    /// # Errors
+    ///
+    /// [`CatalogError`] on catalog/summary read failure; [`CatalogError`] if JSON serialization fails.
     fn summary_json(&self) -> PyResult<String> {
         let summary = self.inner.summary().map_err(catalog_err)?;
         serde_json::to_string(&summary).map_err(|e| CatalogError::new_err(e.to_string()))
     }
 
-    /// Run a query document; returns JSON [`QueryResponse`] with execution.
+    /// Execute a query document and return the full wire response as JSON.
     ///
-    /// `query` may be a JSON string or a dict (serialized with `json.dumps`).
+    /// # Arguments
+    ///
+    /// * `query` — JSON string or a `dict` (serialized with `json.dumps` before parse)
+    ///
+    /// # Returns
+    ///
+    /// JSON string containing execution results (same shape as the `tet query -x` CLI).
+    ///
+    /// # Errors
+    ///
+    /// [`TetError`] on parse/validation/execution errors; [`CatalogError`] when the error is catalog-related.
     fn query(&self, py: Python<'_>, query: &Bound<'_, PyAny>) -> PyResult<String> {
         self.execute_query_json(py, query, ExecuteQueryOptions::execute_no_preview())
     }
 
-    /// Plan a query without execution (parity with `tet query` without `-x`).
+    /// Plan a query without executing (parity with `tet query` without `-x`).
+    ///
+    /// # Arguments
+    ///
+    /// * `query` — same accepted types as [`Self::query`]
+    ///
+    /// # Returns
+    ///
+    /// JSON plan document (no materialized aggregates).
+    ///
+    /// # Errors
+    ///
+    /// Same as [`Self::query`].
     fn plan_only(&self, py: Python<'_>, query: &Bound<'_, PyAny>) -> PyResult<String> {
         self.execute_query_json(py, query, ExecuteQueryOptions::plan_only())
     }
 }
 
+/// Version string of the linked `tetration` crate (from build-time `TETRATION_VERSION`).
 #[pyfunction]
 fn core_version() -> &'static str {
     env!("TETRATION_VERSION")
 }
 
+/// Open a `.tet` file read-only via mmap.
+///
+/// # Arguments
+///
+/// * `path` — filesystem path (not expanded here; Python layer expands `~`)
+///
+/// # Returns
+///
+/// [`PyTetFile`] wrapping the core [`CoreTetFile`].
+///
+/// # Errors
+///
+/// Propagates I/O and catalog errors from `tetration::catalog::TetFile::open` as Python exceptions.
 #[pyfunction]
 fn open(path: PathBuf) -> PyResult<PyTetFile> {
     let inner = CoreTetFile::open(&path).map_err(PyErr::from)?;
     Ok(PyTetFile { inner })
 }
 
+/// Register the `_native` module: exceptions, `open`, `TetFile`, `core_version`.
 #[pymodule]
 fn _native(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add("__version__", env!("CARGO_PKG_VERSION"))?;

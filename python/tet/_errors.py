@@ -133,7 +133,25 @@ def check_query_response(
 
 
 def coerce_query_doc(query: Any) -> dict[str, Any]:
-    """Accept a query ``dict`` or JSON string; raise :class:`TetError` on bad JSON."""
+    """Parse a query document from Python or JSON text.
+
+    Parameters
+    ----------
+    query : dict or str
+        Query document mapping, or JSON string.
+
+    Returns
+    -------
+    dict
+        Query document ready for the Rust engine.
+
+    Raises
+    ------
+    TetError
+        If a string is not valid JSON.
+    TypeError
+        If ``query`` is neither dict nor str.
+    """
     if isinstance(query, dict):
         return query
     if isinstance(query, str):

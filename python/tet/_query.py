@@ -53,7 +53,27 @@ REDUCTION_OPS: dict[str, tuple[str, str]] = {
 def reduction_doc(
     dataset: str, op: str, axes: Sequence[int | str]
 ) -> dict[str, Any]:
-    """Minimal query document for a list-style reduction (``mean``, ``sum``, …)."""
+    """Build a minimal list-style reduction query document.
+
+    Parameters
+    ----------
+    dataset : str
+        Target dataset name.
+    op : str
+        Wire op key (e.g. ``"mean"``, ``"sum"``).
+    axes : sequence of int or str
+        Axis indices or names to reduce.
+
+    Returns
+    -------
+    dict
+        ``{"dataset": ..., op: [axis indices]}``.
+
+    Raises
+    ------
+    ValueError
+        If ``op`` is not in :data:`REDUCTION_OPS`.
+    """
     if op not in REDUCTION_OPS:
         raise ValueError(f"unknown reduction op: {op!r}")
     return {"dataset": dataset, op: list(axes)}
@@ -73,10 +93,26 @@ _MATRIX_FIELDS: dict[str, tuple[str, str]] = {
 
 @dataclass(frozen=True)
 class QueryResult:
-    """Parsed query response from :meth:`~tet.TetFile.execute` or ``query(..., raw=False)``.
+    """Parsed query response from :meth:`~tet.TetFile.execute` (``raw=False``).
 
-    Prefer ``.scalar`` for full reductions, ``.reduced`` for partial axes, ``.matrix``
-    for covariance/correlation. The full wire JSON is always in ``.raw``.
+    Attributes
+    ----------
+    scalar : float, int, bool, or None
+        Full reduction result when all requested axes were reduced.
+    reduced : list or None
+        Partial reduction vector along remaining axes.
+    matrix : list of list or None
+        Covariance/correlation matrix when applicable.
+    matrix_order : list of str or None
+        Axis labels for matrix rows/columns.
+    histogram_counts, histogram_edges : list or None
+        Histogram op outputs.
+    raw : dict
+        Full wire JSON from the engine.
+
+    See Also
+    --------
+    value : ``scalar`` if set, else ``reduced``.
     """
 
     accepted: bool
@@ -94,7 +130,18 @@ class QueryResult:
 
     @property
     def value(self) -> float | int | bool | list[float] | list[int] | list[bool]:
-        """Scalar aggregate, or partial-reduction vector when no scalar."""
+        """Primary result: ``.scalar`` if set, else ``.reduced``.
+
+        Returns
+        -------
+        float, int, bool, or list
+            The aggregate or reduced vector.
+
+        Raises
+        ------
+        TetError
+            If neither ``scalar`` nor ``reduced`` is set.
+        """
         if self.scalar is not None:
             return self.scalar
         if self.reduced is not None:

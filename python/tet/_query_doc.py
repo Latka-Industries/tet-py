@@ -29,7 +29,20 @@ def axis_slice(
     start_label: str | None = None,
     stop_label: str | None = None,
 ) -> dict[str, Any]:
-    """One per-axis half-open slice for ``selection`` (``start`` inclusive, ``stop`` exclusive)."""
+    """Build one per-axis slice dict for a query ``selection`` array.
+
+    Parameters
+    ----------
+    start, stop, step : int, optional
+        Half-open interval ``[start, stop)`` on this axis; ``step`` defaults to 1 in the engine.
+    start_label, stop_label : str, optional
+        Coordinate labels resolved at plan time when footer coords exist.
+
+    Returns
+    -------
+    dict
+        Slice object for one dimension (omit keys for “full extent” on that axis).
+    """
     out: dict[str, Any] = {}
     if start is not None:
         out["start"] = start
@@ -45,7 +58,18 @@ def axis_slice(
 
 
 def selection_slices(*slices: Mapping[str, Any]) -> list[dict[str, Any]]:
-    """Build a ``selection`` array (one slice dict per dimension, in order)."""
+    """Build a ``selection`` array for a query document.
+
+    Parameters
+    ----------
+    *slices : mapping
+        One slice dict per dimension (use :func:`axis_slice`); order is axis 0, 1, …
+
+    Returns
+    -------
+    list[dict]
+        Wire ``selection`` list passed to :func:`build_query`.
+    """
     return [dict(s) for s in slices]
 
 
@@ -79,13 +103,26 @@ def build_query(
     selection: Sequence[Mapping[str, Any]] | None = None,
     **op: Any,
 ) -> dict[str, Any]:
-    """Build a one-op query document.
+    """Build a one-operation query document.
 
-    List ops: ``build_query("a", mean=[])`` or ``build_query("a", mean=[0])``.
+    Parameters
+    ----------
+    dataset : str
+        Target dataset name (not validated until execute).
+    selection : sequence of mapping, optional
+        Per-axis slices; see :func:`selection_slices`.
+    **op
+        Exactly one operation keyword argument, e.g. ``mean=[]``, ``quantile={...}``.
 
-    Object ops: ``build_query("a", quantile={"q": 0.5, "axis": 0})``.
+    Returns
+    -------
+    dict
+        Wire document with ``"dataset"``, optional ``"selection"``, and one op key.
 
-    With selection: ``build_query("a", selection=selection_slices(...), sum=[])``.
+    Raises
+    ------
+    ValueError
+        If zero or more than one op keyword is passed, or op name is unknown.
     """
     if len(op) != 1:
         raise ValueError("exactly one operation key required")
