@@ -14,5 +14,5 @@ crate-type = ["cdylib"]
 [dependencies]
 pyo3 = { version = "0.28.3", features = ["extension-module"] }
 serde_json = "1.0"
-# Local dev: ../tetration. Release: use `version = "0.1.5"` and drop `path`.
-tetration = { version = "0.1.5", path = "../tetration", default-features = false }
+# Local dev: ../tetration. Release: use `version = "0.1.6"` and drop `path`.
+tetration = { version = "0.1.6", path = "../tetration", default-features = false }
