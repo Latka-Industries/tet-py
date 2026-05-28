@@ -4,7 +4,10 @@ from __future__ import annotations
 
 from collections.abc import Iterator, Mapping, Sequence
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any
+
+from tet._errors import UnknownAxisError
 
 
 @dataclass(frozen=True, slots=True)
@@ -21,25 +24,44 @@ class Dataset:
     def ndim(self) -> int:
         return len(self.shape)
 
-    def axis_index(self, axis: int | str) -> int:
+    def axis_index(
+        self,
+        axis: int | str,
+        *,
+        path: Path | str | None = None,
+    ) -> int:
         """Resolve axis by dimension index (0, 1, …) or `dim_names` label."""
         if isinstance(axis, int):
             idx = axis + self.ndim if axis < 0 else axis
             if idx < 0 or idx >= self.ndim:
-                raise ValueError(
-                    f"axis {axis} out of range for dataset {self.name!r} with ndim={self.ndim}"
+                raise UnknownAxisError(
+                    axis,
+                    dataset=self.name,
+                    path=path,
+                    ndim=self.ndim,
+                    shape=self.shape,
+                    dim_names=self.dim_names,
                 )
             return idx
         if self.dim_names is None:
-            raise ValueError(
-                f"dataset {self.name!r} has no dim_names metadata; use integer axis indices"
+            raise UnknownAxisError(
+                axis,
+                dataset=self.name,
+                path=path,
+                ndim=self.ndim,
+                shape=self.shape,
+                dim_names=None,
             )
         try:
             return self.dim_names.index(axis)
         except ValueError as exc:
-            raise ValueError(
-                f"unknown axis name {axis!r} for {self.name!r}; "
-                f"dim_names={list(self.dim_names)}"
+            raise UnknownAxisError(
+                axis,
+                dataset=self.name,
+                path=path,
+                ndim=self.ndim,
+                shape=self.shape,
+                dim_names=self.dim_names,
             ) from exc
 
 
@@ -69,8 +91,10 @@ def axes_for_query(axes: Sequence[int | str] | None) -> list[int | str]:
 def axes_wire(
     dataset: Dataset,
     axes: Sequence[int | str] | None,
+    *,
+    path: Path | str | None = None,
 ) -> list[int | str]:
     """Map user axes to query wire form (ints or string indices)."""
     if not axes:
         return []
-    return [dataset.axis_index(a) for a in axes]
+    return [dataset.axis_index(a, path=path) for a in axes]

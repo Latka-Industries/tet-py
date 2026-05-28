@@ -49,5 +49,5 @@ def test_mean_by_axis_index() -> None:
 
 def test_dim_name_requires_metadata(sample_path: Path) -> None:
     ds = tet.open(sample_path).dataset("temperature")
-    with pytest.raises(ValueError, match="dim_names"):
-        ds.axis_index("time")
+    with pytest.raises(tet.UnknownAxisError, match="dim_names"):
+        ds.axis_index("time", path=sample_path)

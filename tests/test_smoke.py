@@ -35,7 +35,7 @@ def test_summary_and_info(sample_path: Path) -> None:
 
 def test_open_and_mean(sample_path: Path) -> None:
     f = tet.open(sample_path)
-    assert f.path.endswith("sample.tet")
+    assert f.path.name == "sample.tet"
     assert "temperature" in f.datasets()
 
     assert abs(f.mean("temperature") - 3.5) < 1e-9
