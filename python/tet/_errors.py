@@ -6,7 +6,7 @@ import difflib
 import json
 from collections.abc import Sequence
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 from tet._native import TetError
 
@@ -129,7 +129,7 @@ def coerce_query_doc(query: Any) -> dict[str, Any]:
         return query
     if isinstance(query, str):
         try:
-            return json.loads(query)
+            return cast(dict[str, Any], json.loads(query))
         except json.JSONDecodeError as exc:
             raise TetError(f"query string is not valid JSON: {exc}") from exc
     raise TypeError("query must be a dict or JSON string")
