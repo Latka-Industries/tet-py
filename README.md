@@ -49,12 +49,16 @@ uv run pytest -q
 import tet
 
 with tet.open("data.tet") as f:
-    print(f.datasets())  # catalog dataset names
+    for name in f:  # dataset names
+        print(name)
 
-    summary = f.summary()  # or f.info() — same as `tet info --json`
-    print(summary["datasets"][0]["name"])
+    ds = f.dataset("temperature")  # by name
+    ds0 = f[0]                     # by catalog index (same as f.dataset(0))
+    print(ds.name, ds.shape)
 
-    print(f.mean("temperature"))  # helpers build the query document
+    print(f.mean("temperature"))       # all axes
+    print(f.mean("temperature", axis=0))  # axis by index (0, 1, …)
+    # f.mean("temperature", axis="time")  # by name when footer has dim_names
 
     doc = {"dataset": "temperature", "mean": []}
     plan = f.plan_only({"dataset": "temperature"})  # plan only (no op keys)
@@ -92,6 +96,7 @@ tet-py/
 - [x] `TetError` / `CatalogError` exceptions (not bare `RuntimeError`)
 - [x] `plan_only()`, `mean()`, `sum()` helpers
 - [x] `with tet.open(...)`, `TetFile.open`, `query_execute(..., device=...)`
+- [x] `Dataset`, `iter_datasets()`, `f[0]` / `f["name"]`, axis index or `dim_names`
 - [ ] Typed query helpers (`QueryDocument` builders)
 - [ ] Write path: NumPy → chunk tiles (`TetWriterSession`)
 - [ ] Optional convert extras: `h5py`, `netCDF4`, `zarr`, `pandas` (CSV), `pyarrow` (Parquet)
