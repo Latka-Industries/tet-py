@@ -12,7 +12,7 @@ Python bindings for [**Tetration**](https://github.com/Latka-Industries/tetratio
 | Rust core | [`tetration`](https://crates.io/crates/tetration) on crates.io |
 | CLI (no Python) | [`tet`](https://github.com/Latka-Industries/tetration) binary from the main repo |
 
-**Status:** early scaffold — `open`, catalog summary, and `query` via JSON documents. Write path, NumPy views, and ecosystem convert extras are planned ([Phase 11](https://github.com/Latka-Industries/tetration/blob/main/GETTING_STARTED.md#phase-11--bindings-python--c-abi)).
+**Status:** read/query API with catalog access, reduction helpers, selection builders, and file-specific errors. NumPy read/write and convert extras are planned ([Phase 11](https://github.com/Latka-Industries/tetration/blob/main/GETTING_STARTED.md#phase-11--bindings-python--c-abi)).
 
 Do not `pip install tetration` — that PyPI name is an unrelated math package. Use **`tet-py`** / **`import tet`**.
 
@@ -39,60 +39,90 @@ uv sync --extra dev
 mise run develop   # or: uv run maturin develop
 uv run python -c "import tet; print(tet.__version__, tet.core_version())"
 uv run pytest -q
+uv run mypy python/tet
 ```
 
 (`uv sync` runs an editable build via maturin; `maturin develop` refreshes the native extension after Rust changes.)
 
 ### Example
 
+Paths below use the sibling **tetration** fixture `fixtures/small/tet/large.tet` (dataset **`a`**, shape `[34, 64]`). Adjust the path for your machine.
+
 ```python
 import tet
+from tet import axis_slice, build_query, selection_slices
 
-with tet.open("data.tet") as f:
-    for name in f:  # dataset names
-        print(name)
+path = "../tetration/fixtures/small/tet/large.tet"
 
-    ds = f.dataset("temperature")  # by name
-    ds0 = f[0]                     # by catalog index (same as f.dataset(0))
-    print(ds.name, ds.shape)
+with tet.open(path) as f:
+    print(list(f))                    # ['a']
+    print(f.dataset("a").shape)       # (34, 64)
 
-    print(f.mean("temperature"))          # 3.5 — all axes
-    print(f.min("temperature"))           # 1.0
-    print(f.max("temperature", axis=0))   # partial → QueryResult
+    print(f.mean("a"))                # scalar over all axes
+    print(f.min("a"))
+    print(f.max("a", axis=0))         # partial reduction → QueryResult
 
-    # Parsed result (default); pass raw=True for full CLI JSON dict
-    r = f.execute({"dataset": "temperature", "mean": []})
-    print(r.scalar)
+    r = f.execute({"dataset": "a", "mean": []})
+    print(r.scalar)                   # same as f.mean("a"); raw=False default
 
-    f.execute({"dataset": "temperature"}, plan=True)  # plan only, no ops
+    f.execute({"dataset": "a"}, plan=True)  # plan only (no op keys)
+
+    # Subregion + op
+    sel = selection_slices(axis_slice(0, 4), axis_slice(0, 4))
+    f.execute(build_query("a", selection=sel, mean=[]))
+
+    f.quantile("a", 0.5)
+    f.histogram("a", bins=8)
 ```
 
-### Query documents
-
-Prefer **op helpers** (`mean`, `sum`, `min`, `max`, `std`, `var`, `count`, …) or [`execute()`](#query-documents) with `raw=False` (default). Use `query(..., raw=True)` when you need the full wire dict.
-
-Dataset and axis names are **per file**. Wrong names raise [`UnknownDatasetError`](python/tet/_errors.py) / [`UnknownAxisError`](python/tet/_errors.py) listing what that `.tet` actually contains. For IDE autocomplete on a fixed path, generate a stub once:
+For rank-2 covariance/correlation, use a 2-D dataset (e.g. `sample.tet` / `"temperature"`):
 
 ```python
-print(tet.typing_stub("data.tet"))  # save output as e.g. data_tet.pyi in your project
+f = tet.open("../tetration/fixtures/small/tet/sample.tet")
+r = f.covariance("temperature", axis=1)
+print(r.matrix_order, r.matrix)
 ```
 
-`query`, `plan_only`, `query_execute`, and `execute` accept a **dict** or JSON string — same schema as the `tet query` CLI.
+### Query API
 
-- Example fixtures: [`tetration/fixtures/queries/`](https://github.com/Latka-Industries/tetration/tree/main/fixtures/queries) (`mean_temperature.json`, selections, spill, etc.)
-- Wire format and ops: [`docs/query_engine.md`](https://github.com/Latka-Industries/tetration/blob/main/docs/query_engine.md)
-- `execute(..., plan=True)` / `plan_only` — catalog plan only; omit op keys
-- `execute(..., device="cpu")` — sets `execution.device` before execute
-- `raw=True` on `query` / `execute` — full `QueryResponse` dict (debugging, custom ops like `quantile`)
-- `f.quantile` / `f.histogram` / `f.covariance` / `f.correlation` — object-shaped ops
-- `tet.build_query`, `tet.axis_slice`, `tet.selection_slices` — compose `selection` + one op
+**Prefer op helpers** — `mean`, `sum`, `min`, `max`, `std`, `var`, `count`, `product`, `norm_l1`, `norm_l2`, `median`, `all_finite`, `any_nan`, `arg_min`, `arg_max`, plus `quantile`, `histogram`, `covariance`, `correlation`.
+
+Use **`f.execute(doc)`** with `raw=False` (default) for a [`QueryResult`](python/tet/_query.py) (`.scalar`, `.reduced`, `.matrix`, …). Use **`f.query(..., raw=True)`** for the full wire dict (same as `tet query -x` JSON).
+
+**Build documents in Python:**
+
+```python
+from tet import axis_slice, build_query, selection_slices
+
+doc = build_query(
+    "a",
+    selection=selection_slices(axis_slice(0, 2), axis_slice(0, 2)),
+    mean=[],
+)
+f.execute(doc)
+```
+
+`query`, `plan_only`, `query_execute`, and `execute` accept a **dict** or JSON string — same schema as the [`tet query`](https://github.com/Latka-Industries/tetration/blob/main/docs/query_engine.md) CLI.
+
+| Topic | Notes |
+| ----- | ----- |
+| Fixtures | [`tetration/fixtures/queries/`](https://github.com/Latka-Industries/tetration/tree/main/fixtures/queries) |
+| `execute(..., plan=True)` | Plan only; omit `mean` / `sum` / other op keys |
+| `execute(..., device="cpu")` | Sets `execution.device` before execute |
+| `raw=True` | Full `QueryResponse` dict |
+| Errors | `UnknownDatasetError` / `UnknownAxisError` list names valid for **this** file |
+| IDE names | `tet.typing_stub(path)` → save `.pyi` with `Literal` dataset names (optional) |
+
+### `info()` / `summary()`
+
+Both return the full **`tet info --json`** dict (superblock, datasets, **all chunk rows**, metadata). For exploration, prefer `list(f)`, `f.dataset(name)`, or `info["datasets"]` — not printing the whole dict in the REPL.
 
 ## Project layout
 
 ```text
 tet-py/
   pyproject.toml      # PEP 621 + maturin
-  python/tet/         # pure-Python facade
+  python/tet/         # facade (_file, _catalog, _query, _query_doc, _errors)
   native/             # PyO3 extension (links tetration)
     src/lib.rs
   tests/
@@ -102,16 +132,17 @@ tet-py/
 ## Roadmap
 
 - [x] Scaffold: maturin, `tet.open`, `datasets`, `query` (JSON document)
-- [x] `query()` returns `dict` (no `json.loads`)
+- [x] `query()` / `execute(raw=False)` → `QueryResult`
 - [x] `summary()` / `info()` — dict parity with `tet info --json`
-- [x] `TetError` / `CatalogError` exceptions (not bare `RuntimeError`)
-- [x] `plan_only()`, `mean()`, `sum()` helpers
-- [x] `with tet.open(...)`, `TetFile.open`, `query_execute(..., device=...)`
+- [x] Reduction helpers (`mean`, `sum`, `min`, `max`, …)
+- [x] `quantile`, `histogram`, `covariance`, `correlation`
+- [x] `build_query`, `axis_slice`, `selection_slices`
 - [x] `Dataset`, `iter_datasets()`, `f[0]` / `f["name"]`, axis index or `dim_names`
-- [ ] Typed query helpers (`QueryDocument` builders)
-- [ ] Write path: NumPy → chunk tiles (`TetWriterSession`)
-- [ ] Optional convert extras: `h5py`, `netCDF4`, `zarr`, `pandas` (CSV), `pyarrow` (Parquet)
-- [ ] Wheels on PyPI; pin `tetration = "x.y.z"` from crates.io (drop path dep for release)
+- [x] `UnknownDatasetError` / `UnknownAxisError`; optional `typing_stub()`
+- [x] mypy + `_native.pyi`
+- [ ] NumPy read (`read_numpy`) / write (`write_dataset`)
+- [ ] Optional convert extras: `h5py`, `netCDF4`, `zarr`, `pandas`, `pyarrow`
+- [ ] Wheels on PyPI; pin `tetration = "x.y.z"` from crates.io for release builds
 
 ## Related
 
