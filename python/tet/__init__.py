@@ -1,4 +1,9 @@
-"""Python bindings for Tetration `.tet` files and the query engine."""
+"""Public API for Tetration ``.tet`` files and the query engine.
+
+Import :func:`open` to get a :class:`TetFile`. Reduction helpers (``mean``, ``sum``,
+``quantile``, …), :class:`QueryResult`, and query builders live on the file object
+or as module-level exports.
+"""
 
 from __future__ import annotations
 
@@ -33,6 +38,7 @@ def typing_stub(path: str | PathLike[str]) -> str:
 
 
 def open(path: str | PathLike[str]) -> TetFile:
+    """Open a ``.tet`` file read-only (mmap). Alias for :meth:`TetFile.open`."""
     return TetFile.open(path)
 
 

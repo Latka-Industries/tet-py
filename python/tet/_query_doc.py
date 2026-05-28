@@ -1,4 +1,7 @@
-"""Build query documents: selection slices and wire op shapes."""
+"""Construct query JSON documents (selection + one operation).
+
+Wire shape matches the ``tet query`` CLI; see tetration ``docs/query_engine.md``.
+"""
 
 from __future__ import annotations
 
@@ -103,6 +106,7 @@ def quantile_op(
     axis: int | str | None = None,
     path: str | None = None,
 ) -> dict[str, Any]:
+    """Body for ``"quantile": { "q": …, "axis": … }``."""
     body: dict[str, Any] = {"q": q}
     body.update(wire_axis_fields(dataset, axes, axis=axis, path=path))
     return body
@@ -118,6 +122,7 @@ def histogram_op(
     max: float | None = None,
     path: str | None = None,
 ) -> dict[str, Any]:
+    """Body for ``"histogram": { "bins": …, optional "min"/"max", "axis": … }``."""
     body: dict[str, Any] = {"bins": bins}
     body.update(wire_axis_fields(dataset, axes, axis=axis, path=path))
     if min is not None:
@@ -156,7 +161,7 @@ def correlation_op(
 
 
 def op_key_from_doc(doc: dict[str, Any]) -> str | None:
-    """Single operation key on the document, if any."""
+    """Return the sole operation key on ``doc``, or ``None`` if zero or many."""
     ops = [k for k in doc if k in QUERY_OP_KEYS and k not in _QUERY_DOC_META]
     if len(ops) == 1:
         return ops[0]

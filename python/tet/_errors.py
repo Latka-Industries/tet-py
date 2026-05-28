@@ -1,4 +1,7 @@
-"""File-specific errors and query response checks."""
+"""Errors and validation for a specific open ``.tet`` file.
+
+Messages list dataset names and axis labels from that file's catalog, not generic hints.
+"""
 
 from __future__ import annotations
 
@@ -12,7 +15,7 @@ from tet._native import TetError
 
 
 class UnknownDatasetError(KeyError, TetError):
-    """Dataset name is not in this `.tet` catalog."""
+    """``dataset`` name is missing from this file's catalog (subclass of :class:`KeyError`)."""
 
     def __init__(
         self,
@@ -42,7 +45,7 @@ class UnknownDatasetError(KeyError, TetError):
 
 
 class UnknownAxisError(ValueError, TetError):
-    """Axis index or name is invalid for a dataset in this `.tet` file."""
+    """Axis index or name is invalid for a dataset in this file (subclass of :class:`ValueError`)."""
 
     def __init__(
         self,
@@ -95,6 +98,7 @@ class UnknownAxisError(ValueError, TetError):
 
 
 def format_dataset_list(names: Sequence[str]) -> str:
+    """Comma-separated quoted names for error messages."""
     if not names:
         return "(empty catalog)"
     return ", ".join(repr(n) for n in names)
@@ -106,7 +110,11 @@ def check_query_response(
     path: Path | str | None,
     require_execution: bool = False,
 ) -> None:
-    """Raise file-specific errors when the engine reports catalog / execution issues."""
+    """Raise when the engine rejects the query or the dataset is not in this file.
+
+    Call after parsing a ``QueryResponse`` dict. Checks ``catalog.matched`` and
+    ``accepted`` before optional ``execution`` presence.
+    """
     catalog = raw.get("catalog")
     if isinstance(catalog, dict) and catalog.get("matched") is False:
         requested = str(raw.get("dataset", ""))
@@ -125,6 +133,7 @@ def check_query_response(
 
 
 def coerce_query_doc(query: Any) -> dict[str, Any]:
+    """Accept a query ``dict`` or JSON string; raise :class:`TetError` on bad JSON."""
     if isinstance(query, dict):
         return query
     if isinstance(query, str):

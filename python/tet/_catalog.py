@@ -1,4 +1,4 @@
-"""Catalog helpers: dataset records, axis indices, iteration."""
+"""Catalog view: :class:`Dataset` records and axis name/index resolution."""
 
 from __future__ import annotations
 
@@ -12,16 +12,17 @@ from tet._errors import UnknownAxisError
 
 @dataclass(frozen=True, slots=True)
 class Dataset:
-    """One dataset entry from the `.tet` catalog."""
+    """One dataset from the file catalog (shape, dtype tag, optional ``dim_names``)."""
 
     name: str
     shape: tuple[int, ...]
-    dtype: int
+    dtype: int  # wire tag; see tetration ``DATASET_DTYPE_TAG_V1``
     chunk_shape: tuple[int, ...]
-    dim_names: tuple[str, ...] | None = None
+    dim_names: tuple[str, ...] | None = None  # from footer metadata when present
 
     @property
     def ndim(self) -> int:
+        """Number of dimensions (``len(shape)``)."""
         return len(self.shape)
 
     def axis_index(
@@ -30,7 +31,10 @@ class Dataset:
         *,
         path: Path | str | None = None,
     ) -> int:
-        """Resolve axis by dimension index (0, 1, …) or `dim_names` label."""
+        """Resolve ``axis`` to a 0-based index (int, negative index, or ``dim_names`` label).
+
+        Raises :class:`~tet.UnknownAxisError` when out of range or name unknown.
+        """
         if isinstance(axis, int):
             idx = axis + self.ndim if axis < 0 else axis
             if idx < 0 or idx >= self.ndim:
@@ -69,6 +73,7 @@ def dataset_from_summary(
     record: Mapping[str, Any],
     dim_names: Sequence[str] | None = None,
 ) -> Dataset:
+    """Build a :class:`Dataset` from a catalog JSON record plus optional footer names."""
     shape = tuple(int(x) for x in record["shape"])
     chunk_shape = tuple(int(x) for x in record["chunk_shape"])
     names = tuple(dim_names) if dim_names else None
@@ -94,7 +99,7 @@ def axes_wire(
     *,
     path: Path | str | None = None,
 ) -> list[int | str]:
-    """Map user axes to query wire form (ints or string indices)."""
+    """Map user axes to query wire form (decimal index strings or resolved ints)."""
     if not axes:
         return []
     return [dataset.axis_index(a, path=path) for a in axes]

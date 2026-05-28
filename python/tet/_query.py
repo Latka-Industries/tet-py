@@ -1,4 +1,4 @@
-"""Query helpers: op wrappers, [`QueryResult`], and execution field mapping."""
+"""Query execution results and mapping from wire op keys to ``execution`` fields."""
 
 from __future__ import annotations
 
@@ -22,7 +22,7 @@ def _op_fields(
     )
 
 
-# Wire key → (scalar execution field, partial-reduction execution field).
+# List-style ops: wire key ``mean: [0]`` → operation_mean / operation_reduced_mean.
 _REDUCTION_WIRE_KEYS = (
     "sum",
     "mean",
@@ -41,6 +41,7 @@ _REDUCTION_WIRE_KEYS = (
     "null_count",
 )
 
+# Public map used by tests and advanced callers.
 REDUCTION_OPS: dict[str, tuple[str, str]] = {
     key: _op_fields(key) for key in _REDUCTION_WIRE_KEYS
 } | {
@@ -52,6 +53,7 @@ REDUCTION_OPS: dict[str, tuple[str, str]] = {
 def reduction_doc(
     dataset: str, op: str, axes: Sequence[int | str]
 ) -> dict[str, Any]:
+    """Minimal query document for a list-style reduction (``mean``, ``sum``, …)."""
     if op not in REDUCTION_OPS:
         raise ValueError(f"unknown reduction op: {op!r}")
     return {"dataset": dataset, op: list(axes)}
@@ -71,7 +73,11 @@ _MATRIX_FIELDS: dict[str, tuple[str, str]] = {
 
 @dataclass(frozen=True)
 class QueryResult:
-    """Parsed query response (use ``TetFile.query(..., raw=False)`` or op helpers)."""
+    """Parsed query response from :meth:`~tet.TetFile.execute` or ``query(..., raw=False)``.
+
+    Prefer ``.scalar`` for full reductions, ``.reduced`` for partial axes, ``.matrix``
+    for covariance/correlation. The full wire JSON is always in ``.raw``.
+    """
 
     accepted: bool
     message: str | None
@@ -81,7 +87,7 @@ class QueryResult:
     plan: dict[str, Any] | None
     execution: dict[str, Any] | None
     raw: dict[str, Any]
-    matrix: list[float] | None = None
+    matrix: list[float] | None = None  # row-major, order×order for cov/corr
     matrix_order: int | None = None
     histogram_counts: list[float] | None = None
     histogram_edges: list[float] | None = None
@@ -104,6 +110,7 @@ class QueryResult:
         path: str | None = None,
         require_execution: bool = False,
     ) -> QueryResult:
+        """Build from a wire ``QueryResponse`` dict; pass ``op`` to fill typed fields."""
         check_query_response(
             raw, path=path, require_execution=require_execution
         )
