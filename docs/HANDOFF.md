@@ -27,7 +27,7 @@ Agent/onboarding doc for **`~/Code/tet-py`**. Parent project: **[tetration](http
 ### Not done\*\*
 
 - No PyPI publish; git remote on **Latka-Industries/tet-py** (private)
-- No typed Python query objects, NumPy buffers, write path, convert extras
+- No NumPy read/write (`read_numpy` / `write_dataset`); no convert extras
 - `query()` returns **`dict`** (parsed `QueryResponse` JSON)
 - No `TetFile.open` classmethod (use `tet.open` only)
 
@@ -69,14 +69,28 @@ Goal: parity with common `tet query -t … -x` embedder paths without hand-rolle
 - [x] Document query schema → README links `tetration/fixtures/queries/`
 - [x] Errors: `tet.TetError`, `tet.CatalogError`; `OSError` on missing file
 
-### Phase 2 — Write path (P1)
+### Phase 2 — NumPy interchange (P1)
 
-Goal: create/append `.tet` from NumPy (no Rust HDF5 in wheels).
+Goal: make **NumPy** the primary Python array surface for `.tet` (read and write). Add `numpy` as a dependency when these APIs land. Decode/materialize stays in Rust (`materialize_read_plan_*`, `TetWriterSession`); Python gets `ndarray` views or copies.
 
-- [ ] Expose `TetWriterSession` / `TetFile` commit path from tetration catalog API
+**Read (`.tet` → NumPy)** — tetration already materializes selections in Rust; tet-py does not expose it yet.
+
+- [ ] `read_numpy(dataset, selection=...)` (or `Dataset.to_numpy()`) → `numpy.ndarray` with catalog shape / dtype
+- [ ] PyO3 wrapper over `materialize_read_plan_f32_le` / `_f64_` (and dtype routing); copy into NumPy (v1)
+- [ ] Optional: `query_execute(..., preview=N)` → `ndarray` for capped `execution.*_preview` samples
+- [ ] Document RAM budget: large selections use spill/temp paths in the engine (same as CLI)
+- [ ] Defer zero-copy mmap → NumPy until copy path is stable (P2 nice-to-have)
+
+**Write (NumPy → `.tet`)** — no Rust HDF5/NetCDF in wheels.
+
+- [ ] Expose `TetWriterSession` / commit path from tetration catalog API
 - [ ] `write_dataset(name, array: numpy.ndarray, chunk_shape=..., attrs=..., coords=...)`
 - [ ] Footer metadata + history events on commit
-- [ ] Tests: roundtrip write → read → query sum/mean vs golden
+
+**Tests**
+
+- [ ] Roundtrip: `write_dataset` → `read_numpy` → `mean`/`sum` vs golden
+- [ ] Small fixture only in CI; skip/multi-GB guarded locally
 
 ### Phase 3 — Ecosystem convert (P1, Python-only)
 
@@ -103,7 +117,7 @@ Rust CLI **`tet convert`** remains the fast path for HDF5/NetCDF/Zarr on machine
 - [ ] Release: pin `tetration = "x.y.z"` from crates.io; remove `path = "../tetration"` in published `Cargo.toml` (or maturin/source dist policy)
 - [ ] Linux / macOS / Windows wheels via maturin-action
 - [ ] Version policy: `tet-py` version tracks compatible `tetration` minor (document in README)
-- [ ] `numpy` as dependency when buffer APIs land
+- [x] Plan: `numpy` dependency when Phase 2 read/write APIs land (see Phase 2)
 
 ### Phase 5 — Nice-to-have (P2)
 
@@ -135,10 +149,10 @@ User code  →  import tet  →  python/tet/__init__.py
 | Horizon    | Target                                                                                         |
 | ---------- | ---------------------------------------------------------------------------------------------- |
 | **Short**  | Stable read/query API, CI, PyPI alpha `0.1.x`, docs + examples                                 |
-| **Medium** | Write + convert extras; embedders replace subprocess `tet`                                     |
+| **Medium** | NumPy read/write + convert extras; embedders replace subprocess `tet`                        |
 | **Long**   | Versioned wheels per platform; optional alignment with tetration **C ABI** for non-Python only |
 
-**Success:** `pip install tet-py` → `import tet` → open `.tet` → query with dict or helpers → optional convert from CSV/Parquet/HDF5 via extras — without requiring Rust on the end user machine.
+**Success:** `pip install tet-py` → `import tet` → open `.tet` → query or **`read_numpy`** → optional **`write_dataset`** / convert from CSV/Parquet/HDF5 via extras — without requiring Rust on the end user machine.
 
 **Non-goals for tet-py v0.x:** reimplement layout/query in Python; sparse native format; GPU in Python wheel by default; duplicate Rust `tet convert` codecs inside the extension.
 
@@ -148,8 +162,9 @@ User code  →  import tet  →  python/tet/__init__.py
 
 1. Pin **one** Python (3.11 vs 3.13) for CI wheels?
 2. Submodule **tetration** vs path sibling for CI?
-3. Publish **0.1.0** before write path, or after Phase 2 smoke?
-4. Exception hierarchy depth vs plain `RuntimeError` from PyO3 today?
+3. Publish **0.1.0** before NumPy interchange, or after Phase 2 read smoke?
+4. **NumPy read before write**, or both in one Phase 2 PR series?
+5. Exception hierarchy depth vs plain `RuntimeError` from PyO3 today?
 
 ---
 
