@@ -21,7 +21,7 @@ Do not `pip install tetration` — that PyPI name is an unrelated math package. 
 ### Prerequisites
 
 - Python **3.11+**
-- Rust **1.95+** ([`rust-toolchain.toml`](rust-toolchain.toml) or [mise](https://mise.jdx.dev/))
+- Rust **1.95+** ([`.mise.toml`](.mise.toml) pins `rust = "1.95"`, or install matching [rustup](https://rustup.rs/) toolchain; `native/Cargo.toml` sets `rust-version = "1.95"`)
 - [maturin](https://www.maturin.rs/) (`pip install maturin` or `uv tool install maturin`)
 
 ### Development (local `tetration` checkout)
