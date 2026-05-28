@@ -1,7 +1,5 @@
 # tet-py
 
-[![uv]]
-
 [![CI](https://github.com/Latka-Industries/tet-py/actions/workflows/ci.yml/badge.svg)](https://github.com/Latka-Industries/tet-py/actions/workflows/ci.yml)
 [![Python](https://img.shields.io/badge/python-3.11%2B-blue)](https://www.python.org/downloads/)
 [![License](https://img.shields.io/badge/license-MIT%20OR%20Apache--2.0-blue)](LICENSE-MIT)
@@ -49,21 +47,30 @@ uv run pytest -q
 ```python
 import tet
 
-f = tet.open("data.tet")
-print(f.datasets())  # catalog dataset names
+with tet.open("data.tet") as f:
+    print(f.datasets())  # catalog dataset names
 
-summary = f.summary()  # or f.info() — same as `tet info --json`
-print(summary["datasets"][0]["name"])
+    summary = f.summary()  # or f.info() — same as `tet info --json`
+    print(summary["datasets"][0]["name"])
 
-print(f.mean("temperature"))  # helpers build the query document
+    print(f.mean("temperature"))  # helpers build the query document
 
-doc = {"dataset": "temperature", "mean": []}
-plan = f.plan_only(doc)       # plan without -x execution
-out = f.query(doc)            # full execute
-print(out["execution"]["operation_mean"])
+    doc = {"dataset": "temperature", "mean": []}
+    plan = f.plan_only({"dataset": "temperature"})  # plan only (no op keys)
+    out = f.query(doc)  # execute (same as tet query -x)
+    print(out["execution"]["operation_mean"])
+
+    out_cpu = f.query_execute(doc, device="cpu")
 ```
 
-`query` accepts a **dict** or a JSON string — same schema as `tet query` / [`fixtures/queries/`](https://github.com/Latka-Industries/tetration/tree/main/fixtures/queries).
+### Query documents
+
+`query`, `plan_only`, and `query_execute` accept a **dict** or JSON string — same schema as the `tet query` CLI.
+
+- Example fixtures: [`tetration/fixtures/queries/`](https://github.com/Latka-Industries/tetration/tree/main/fixtures/queries) (`mean_temperature.json`, selections, spill, etc.)
+- Wire format and ops: [`docs/query_engine.md`](https://github.com/Latka-Industries/tetration/blob/main/docs/query_engine.md)
+- `plan_only` — dataset/catalog plan only; omit `mean`/`sum`/other op keys
+- `query_execute(..., device="cpu")` — sets `execution.device` on the document before execute
 
 ## Project layout
 
@@ -83,6 +90,7 @@ tet-py/
 - [x] `summary()` / `info()` — dict parity with `tet info --json`
 - [x] `TetError` / `CatalogError` exceptions (not bare `RuntimeError`)
 - [x] `plan_only()`, `mean()`, `sum()` helpers
+- [x] `with tet.open(...)`, `TetFile.open`, `query_execute(..., device=...)`
 - [ ] Typed query helpers (`QueryDocument` builders)
 - [ ] Write path: NumPy → chunk tiles (`TetWriterSession`)
 - [ ] Optional convert extras: `h5py`, `netCDF4`, `zarr`, `pandas` (CSV), `pyarrow` (Parquet)

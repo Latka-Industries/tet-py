@@ -36,3 +36,15 @@ def test_sum_helper(sample_path: Path) -> None:
     f = tet.open(sample_path)
     # sample.tet temperature is 2×3, values 1..6 -> sum = 21
     assert abs(f.sum("temperature") - 21.0) < 1e-5
+
+
+def test_context_manager_and_class_open(sample_path: Path) -> None:
+    with tet.TetFile.open(sample_path) as f:
+        assert abs(f.mean("temperature") - 3.5) < 1e-9
+
+
+def test_query_execute_device_cpu(sample_path: Path) -> None:
+    f = tet.open(sample_path)
+    out = f.query_execute({"dataset": "temperature", "mean": []}, device="cpu")
+    assert out["accepted"] is True
+    assert abs(out["execution"]["operation_mean"] - 3.5) < 1e-9

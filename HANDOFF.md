@@ -53,19 +53,19 @@ Layout: `python/tet/` = facade; `src/lib.rs` = PyO3; tests expect sibling `~/Cod
 - [x] CI: `.github/workflows/ci.yml` (checkout sibling **tetration**, `uv sync` → `maturin develop` → `pytest`)
 - [ ] Register **`tet-py`** on PyPI (empty/meta release optional) to hold the name
 - [x] `LICENSE-MIT` + `LICENSE-APACHE` (dual license, match tetration)
-- [ ] Link README ↔ tetration Phase 11 when milestones land
+- [x] README links tetration Phase 11, query fixtures, query_engine docs
 
 ### Phase 1 — Read / query UX (P0)
 
 Goal: parity with common `tet query -t … -x` embedder paths without hand-rolled JSON everywhere.
 
 - [x] `query()` → return **`dict`** (parsed from Rust JSON in Python facade)
-- [ ] Optional: `query_execute(doc, preview=0, device=None)` mapping `ExecuteQueryOptions` + `execution.device`
+- [x] `query_execute(doc, device=...)` sets `execution.device` (preview still via raw doc / future Rust knob)
 - [x] `info()` / `summary()` → **`dict`** (parsed `summary_json()`; parity with `tet info --json`)
 - [x] `plan_only(doc)` → plan without execution (`ExecuteQueryOptions::plan_only`)
 - [x] `mean(dataset, axes=...)`, `sum(...)` — thin helpers over `query()`
 - [ ] More ops / selection slices — build `QueryDocument` in Python or thin Rust exports
-- [ ] Document query schema → link `tetration/fixtures/queries/`
+- [x] Document query schema → README links `tetration/fixtures/queries/`
 - [x] Errors: `tet.TetError`, `tet.CatalogError`; `OSError` on missing file
 
 ### Phase 2 — Write path (P1)
@@ -106,8 +106,8 @@ Rust CLI **`tet convert`** remains the fast path for HDF5/NetCDF/Zarr on machine
 
 ### Phase 5 — Nice-to-have (P2)
 
-- [ ] Context manager: `with tet.open(path) as f:`
-- [ ] `tet.TetFile.open` classmethod if desired (`PyType` import in PyO3)
+- [x] Context manager: `with tet.open(path) as f:`
+- [x] `tet.TetFile.open` classmethod
 - [ ] Submodule `tet.convert`, `tet.query` for large API surface
 - [ ] Jupyter / xarray accessor sketch (`ds.tet.write(...)` out of scope unless requested)
 - [ ] Shared fixtures: git submodule `tetration` or vendor `fixtures/small/` for CI without sibling path

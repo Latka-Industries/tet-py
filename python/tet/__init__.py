@@ -20,11 +20,30 @@ def _mean_sum_doc(dataset: str, op: str, axes: Sequence[int] | None) -> dict[str
     return {"dataset": dataset, op: list(axes) if axes is not None else []}
 
 
+def _coerce_query_doc(query: Any) -> dict[str, Any]:
+    if isinstance(query, dict):
+        return query
+    if isinstance(query, str):
+        return json.loads(query)
+    raise TypeError("query must be a dict or JSON string")
+
+
 class TetFile:
     """Opened `.tet` file; `query` returns a parsed response dict."""
 
     def __init__(self, inner: _native.TetFile) -> None:
         self._inner = inner
+
+    @classmethod
+    def open(cls, path: str | Any) -> TetFile:
+        """Open `.tet` read-only (same as [`tet.open`])."""
+        return cls(_native.open(path))
+
+    def __enter__(self) -> TetFile:
+        return self
+
+    def __exit__(self, *args: object) -> None:
+        return None
 
     def __getattr__(self, name: str) -> Any:
         return getattr(self._inner, name)
@@ -40,6 +59,20 @@ class TetFile:
     def query(self, query: Any) -> dict[str, Any]:
         """Execute a query document (same as `tet query -t … -x`)."""
         return _parse_json_response(self._inner.query(query))
+
+    def query_execute(
+        self,
+        query: Any,
+        *,
+        device: str | None = None,
+    ) -> dict[str, Any]:
+        """Execute with optional `execution.device` (e.g. ``cpu``, ``auto``, ``cuda:0``)."""
+        doc = _coerce_query_doc(query)
+        if device is not None:
+            execution = dict(doc.get("execution") or {})
+            execution["device"] = device
+            doc = {**doc, "execution": execution}
+        return self.query(doc)
 
     def plan_only(self, query: Any) -> dict[str, Any]:
         """Plan without execution (same as `tet query` without `-x`).
@@ -72,7 +105,7 @@ def _scalar_from_execution(out: dict[str, Any], field: str) -> float:
 
 
 def open(path: str | Any) -> TetFile:
-    return TetFile(_native.open(path))
+    return TetFile.open(path)
 
 
 __all__ = [
