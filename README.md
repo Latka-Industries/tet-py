@@ -7,7 +7,7 @@
 
 Python bindings for [**Tetration**](https://github.com/Latka-Industries/tetration) — mmap-friendly `.tet` tensor files and the JSON/TOML query engine.
 
-| Install (PyPI) | `pip install tet-py` *(when published)* |
+| Install (PyPI) | `pip install tet-py` _(when published)_ |
 | Import | `import tet` |
 | Rust core | [`tetration`](https://crates.io/crates/tetration) on crates.io |
 | CLI (no Python) | [`tet`](https://github.com/Latka-Industries/tetration) binary from the main repo |
@@ -46,72 +46,22 @@ uv run mypy python/tet
 
 ### Example
 
-Paths below use the sibling **tetration** fixture `fixtures/small/tet/large.tet` (dataset **`a`**, shape `[34, 64]`). Adjust the path for your machine.
-
 ```python
 import tet
-from tet import axis_slice, build_query, selection_slices
 
-path = "../tetration/fixtures/small/tet/large.tet"
-
-with tet.open(path) as f:
-    print(list(f))                    # ['a']
-    print(f.dataset("a").shape)       # (34, 64)
-
-    print(f.mean("a"))                # scalar over all axes
-    print(f.min("a"))
-    print(f.max("a", axis=0))         # partial reduction → QueryResult
-
-    r = f.execute({"dataset": "a", "mean": []})
-    print(r.scalar)                   # same as f.mean("a"); raw=False default
-
-    f.execute({"dataset": "a"}, plan=True)  # plan only (no op keys)
-
-    # Subregion + op
-    sel = selection_slices(axis_slice(0, 4), axis_slice(0, 4))
-    f.execute(build_query("a", selection=sel, mean=[]))
-
-    f.quantile("a", 0.5)
-    f.histogram("a", bins=8)
+with tet.open("../tetration/fixtures/small/tet/large.tet") as f:
+    print(list(f), f.dataset("a").shape)   # ['a'], (34, 64)
+    print(f.mean("a"), f.quantile("a", 0.5))
 ```
 
-For rank-2 covariance/correlation, use a 2-D dataset (e.g. `sample.tet` / `"temperature"`):
+**Operations reference** (every op with examples): [**docs/operations.md**](docs/operations.md)
 
-```python
-f = tet.open("../tetration/fixtures/small/tet/sample.tet")
-r = f.covariance("temperature", axis=1)
-print(r.matrix_order, r.matrix)
-```
-
-### Query API
-
-**Prefer op helpers** — `mean`, `sum`, `min`, `max`, `std`, `var`, `count`, `product`, `norm_l1`, `norm_l2`, `median`, `all_finite`, `any_nan`, `arg_min`, `arg_max`, plus `quantile`, `histogram`, `covariance`, `correlation`.
-
-Use **`f.execute(doc)`** with `raw=False` (default) for a [`QueryResult`](python/tet/_query.py) (`.scalar`, `.reduced`, `.matrix`, …). Use **`f.query(..., raw=True)`** for the full wire dict (same as `tet query -x` JSON).
-
-**Build documents in Python:**
-
-```python
-from tet import axis_slice, build_query, selection_slices
-
-doc = build_query(
-    "a",
-    selection=selection_slices(axis_slice(0, 2), axis_slice(0, 2)),
-    mean=[],
-)
-f.execute(doc)
-```
-
-`query`, `plan_only`, `query_execute`, and `execute` accept a **dict** or JSON string — same schema as the [`tet query`](https://github.com/Latka-Industries/tetration/blob/main/docs/query_engine.md) CLI.
-
-| Topic | Notes |
-| ----- | ----- |
-| Fixtures | [`tetration/fixtures/queries/`](https://github.com/Latka-Industries/tetration/tree/main/fixtures/queries) |
-| `execute(..., plan=True)` | Plan only; omit `mean` / `sum` / other op keys |
-| `execute(..., device="cpu")` | Sets `execution.device` before execute |
-| `raw=True` | Full `QueryResponse` dict |
-| Errors | `UnknownDatasetError` / `UnknownAxisError` list names valid for **this** file |
-| IDE names | `tet.typing_stub(path)` → save `.pyi` with `Literal` dataset names (optional) |
+| Topic                                     | Where                                                                                                  |
+| ----------------------------------------- | ------------------------------------------------------------------------------------------------------ |
+| `mean`, `min`, `quantile`, `histogram`, … | [docs/operations.md](docs/operations.md)                                                               |
+| `build_query`, `selection_slices`         | [docs/operations.md#selection-and-build_query](docs/operations.md#selection-and-build_query)           |
+| Wire schema / CLI                         | [tetration query engine](https://github.com/Latka-Industries/tetration/blob/main/docs/query_engine.md) |
+| All docs                                  | [docs/README.md](docs/README.md)                                                                       |
 
 ### `info()` / `summary()`
 
@@ -126,7 +76,7 @@ tet-py/
   native/             # PyO3 extension (links tetration)
     src/lib.rs
   tests/
-  docs/HANDOFF.md     # phases and agent notes
+  docs/               # operations.md, HANDOFF.md
 ```
 
 ## Roadmap
@@ -146,6 +96,8 @@ tet-py/
 
 ## Related
 
+- [docs/operations.md](docs/operations.md) — query ops (`mean`, `quantile`, …) with examples
+- [docs/README.md](docs/README.md) — doc index
 - [HANDOFF.md](docs/HANDOFF.md) — phases, dev commands, agent notes
 - [Layout v1](https://github.com/Latka-Industries/tetration/blob/main/docs/layout_v1.md)
 - [Query engine](https://github.com/Latka-Industries/tetration/blob/main/docs/query_engine.md)
