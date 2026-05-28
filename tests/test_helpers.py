@@ -54,6 +54,8 @@ def test_context_manager_and_class_open(sample_path: Path) -> None:
 
 def test_query_execute_device_cpu(sample_path: Path) -> None:
     f = tet.open(sample_path)
-    out = f.query_execute({"dataset": "temperature", "mean": []}, device="cpu")
+    out = f.query_execute(
+        {"dataset": "temperature", "mean": []}, device="cpu", raw=True
+    )
     assert out["accepted"] is True
     assert abs(out["execution"]["operation_mean"] - 3.5) < 1e-9

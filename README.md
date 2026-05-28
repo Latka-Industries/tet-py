@@ -56,26 +56,34 @@ with tet.open("data.tet") as f:
     ds0 = f[0]                     # by catalog index (same as f.dataset(0))
     print(ds.name, ds.shape)
 
-    print(f.mean("temperature"))       # all axes
-    print(f.mean("temperature", axis=0))  # axis by index (0, 1, …)
-    # f.mean("temperature", axis="time")  # by name when footer has dim_names
+    print(f.mean("temperature"))          # 3.5 — all axes
+    print(f.min("temperature"))           # 1.0
+    print(f.max("temperature", axis=0))   # partial → QueryResult
 
-    doc = {"dataset": "temperature", "mean": []}
-    plan = f.plan_only({"dataset": "temperature"})  # plan only (no op keys)
-    out = f.query(doc)  # execute (same as tet query -x)
-    print(out["execution"]["operation_mean"])
+    # Parsed result (default); pass raw=True for full CLI JSON dict
+    r = f.execute({"dataset": "temperature", "mean": []})
+    print(r.scalar)
 
-    out_cpu = f.query_execute(doc, device="cpu")
+    f.execute({"dataset": "temperature"}, plan=True)  # plan only, no ops
 ```
 
 ### Query documents
 
-`query`, `plan_only`, and `query_execute` accept a **dict** or JSON string — same schema as the `tet query` CLI.
+Prefer **op helpers** (`mean`, `sum`, `min`, `max`, `std`, `var`, `count`, …) or [`execute()`](#query-documents) with `raw=False` (default). Use `query(..., raw=True)` when you need the full wire dict.
+
+Dataset and axis names are **per file**. Wrong names raise [`UnknownDatasetError`](python/tet/_errors.py) / [`UnknownAxisError`](python/tet/_errors.py) listing what that `.tet` actually contains. For IDE autocomplete on a fixed path, generate a stub once:
+
+```python
+print(tet.typing_stub("data.tet"))  # save output as e.g. data_tet.pyi in your project
+```
+
+`query`, `plan_only`, `query_execute`, and `execute` accept a **dict** or JSON string — same schema as the `tet query` CLI.
 
 - Example fixtures: [`tetration/fixtures/queries/`](https://github.com/Latka-Industries/tetration/tree/main/fixtures/queries) (`mean_temperature.json`, selections, spill, etc.)
 - Wire format and ops: [`docs/query_engine.md`](https://github.com/Latka-Industries/tetration/blob/main/docs/query_engine.md)
-- `plan_only` — dataset/catalog plan only; omit `mean`/`sum`/other op keys
-- `query_execute(..., device="cpu")` — sets `execution.device` on the document before execute
+- `execute(..., plan=True)` / `plan_only` — catalog plan only; omit op keys
+- `execute(..., device="cpu")` — sets `execution.device` before execute
+- `raw=True` on `query` / `execute` — full `QueryResponse` dict (debugging, custom ops like `quantile`)
 
 ## Project layout
 
