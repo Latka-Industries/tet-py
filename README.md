@@ -30,7 +30,7 @@ This repo expects the Rust library next to it by default:
 
 ```text
 ~/Code/tetration   # main crate
-~/Code/tet-py      # this repo (path dependency in Cargo.toml)
+~/Code/tet-py      # this repo (`native/Cargo.toml` path dependency)
 ```
 
 ```bash
@@ -81,11 +81,12 @@ with tet.open("data.tet") as f:
 
 ```text
 tet-py/
-  Cargo.toml          # PyO3 extension (links tetration)
   pyproject.toml      # PEP 621 + maturin
-  src/lib.rs          # native module tet._native
   python/tet/         # pure-Python facade
+  native/             # PyO3 extension (links tetration)
+    src/lib.rs
   tests/
+  docs/HANDOFF.md     # phases and agent notes
 ```
 
 ## Roadmap
@@ -104,6 +105,7 @@ tet-py/
 
 ## Related
 
+- [HANDOFF.md](docs/HANDOFF.md) — phases, dev commands, agent notes
 - [Layout v1](https://github.com/Latka-Industries/tetration/blob/main/docs/layout_v1.md)
 - [Query engine](https://github.com/Latka-Industries/tetration/blob/main/docs/query_engine.md)
 - [AGENTS.md](https://github.com/Latka-Industries/tetration/blob/main/AGENTS.md) — ops and phase status

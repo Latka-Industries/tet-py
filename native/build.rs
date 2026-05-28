@@ -1,11 +1,11 @@
 //! Emit `TETRATION_VERSION` from the sibling `tetration` checkout (path dependency).
 
 fn main() {
-    let manifest = std::path::Path::new("../tetration/Cargo.toml");
+    let manifest = std::path::Path::new("../../tetration/Cargo.toml");
     let version = if manifest.exists() {
-        let text = std::fs::read_to_string(manifest).expect("read ../tetration/Cargo.toml");
+        let text = std::fs::read_to_string(manifest).expect("read ../../tetration/Cargo.toml");
         parse_package_version(&text).unwrap_or_else(|| {
-            panic!("version = not found in ../tetration/Cargo.toml");
+            panic!("version = not found in ../../tetration/Cargo.toml");
         })
     } else {
         // crates.io-only build: keep in sync with Cargo.toml `[dependencies.tetration].version`

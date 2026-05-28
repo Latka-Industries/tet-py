@@ -17,7 +17,7 @@ Agent/onboarding doc for **`~/Code/tet-py`**. Parent project: **[tetration](http
 
 ### Done / working\*\*
 
-- [x] Repo scaffold: `pyproject.toml` (maturin), `Cargo.toml`, `build.rs` (`TETRATION_VERSION` from `../tetration`)
+- [x] Repo scaffold: `pyproject.toml` (maturin), `native/` (`Cargo.toml`, `build.rs`, `TETRATION_VERSION` from `../../tetration`)
 - [x] Path dep: `tetration = { path = "../tetration", default-features = false }` (lean wheels; no HDF5/NetCDF in extension)
 - [x] PyO3 **0.28**, `uv sync --extra dev`, `uv run maturin develop`
 - [x] API: `tet.open(path)` (`str` / `Path`), `TetFile.path`, `datasets()`, `summary_json()`, `query(dict|str)` → JSON `QueryResponse`
@@ -41,7 +41,7 @@ uv run pytest -q
 uv run python -c "import tet; print(tet.__version__, tet.core_version())"
 ```
 
-Layout: `python/tet/` = facade; `src/lib.rs` = PyO3; tests expect sibling `~/Code/tetration`.
+Layout: `python/tet/` = facade; `native/src/lib.rs` = PyO3; tests expect sibling `~/Code/tetration`.
 
 ---
 
@@ -157,9 +157,9 @@ User code  →  import tet  →  python/tet/__init__.py
 
 | File                     | Purpose                                               |
 | ------------------------ | ----------------------------------------------------- |
-| `src/lib.rs`             | `PyTetFile`, `open`, `core_version`, `_native` module |
+| `native/src/lib.rs`      | `PyTetFile`, `open`, `core_version`, `_native` module |
 | `python/tet/__init__.py` | Public exports, `__version__`                         |
-| `build.rs`               | `TETRATION_VERSION` from sibling crate                |
+| `native/build.rs`        | `TETRATION_VERSION` from sibling crate                |
 | `tests/test_smoke.py`    | `sample.tet` mean query                               |
 | `README.md`              | User-facing quick start                               |
 
