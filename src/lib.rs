@@ -54,6 +54,26 @@ struct PyTetFile {
     inner: CoreTetFile,
 }
 
+impl PyTetFile {
+    fn execute_query_json(
+        &self,
+        py: Python<'_>,
+        query: &Bound<'_, PyAny>,
+        options: ExecuteQueryOptions,
+    ) -> PyResult<String> {
+        let doc = parse_document(py, query)?;
+        let response = execute_query_document(
+            &doc,
+            self.inner.path(),
+            self.inner.mmap(),
+            options,
+            None,
+        )
+        .map_err(tet_err)?;
+        serde_json::to_string(&response).map_err(|e| TetError::new_err(e.to_string()))
+    }
+}
+
 #[pymethods]
 impl PyTetFile {
     #[getter]
@@ -73,20 +93,16 @@ impl PyTetFile {
         serde_json::to_string(&summary).map_err(|e| CatalogError::new_err(e.to_string()))
     }
 
-    /// Run a query document; returns JSON [`QueryResponse`].
+    /// Run a query document; returns JSON [`QueryResponse`] with execution.
     ///
     /// `query` may be a JSON string or a dict (serialized with `json.dumps`).
     fn query(&self, py: Python<'_>, query: &Bound<'_, PyAny>) -> PyResult<String> {
-        let doc = parse_document(py, query)?;
-        let response = execute_query_document(
-            &doc,
-            self.inner.path(),
-            self.inner.mmap(),
-            ExecuteQueryOptions::execute_no_preview(),
-            None,
-        )
-        .map_err(tet_err)?;
-        serde_json::to_string(&response).map_err(|e| TetError::new_err(e.to_string()))
+        self.execute_query_json(py, query, ExecuteQueryOptions::execute_no_preview())
+    }
+
+    /// Plan a query without execution (parity with `tet query` without `-x`).
+    fn plan_only(&self, py: Python<'_>, query: &Bound<'_, PyAny>) -> PyResult<String> {
+        self.execute_query_json(py, query, ExecuteQueryOptions::plan_only())
     }
 }
 

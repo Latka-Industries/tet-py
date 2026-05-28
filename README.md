@@ -1,13 +1,14 @@
 # tet-py
 
-[![uv](https://img.shields.io/badge/uv-astral-purple.svg)](https://docs.astral.sh/uv/)
-[![Python](https://img.shields.io/badge/python-3.11%2B-blue)](https://www.python.org/downloads/)
+[![uv]]
+
 [![CI](https://github.com/Latka-Industries/tet-py/actions/workflows/ci.yml/badge.svg)](https://github.com/Latka-Industries/tet-py/actions/workflows/ci.yml)
+[![Python](https://img.shields.io/badge/python-3.11%2B-blue)](https://www.python.org/downloads/)
 [![License](https://img.shields.io/badge/license-MIT%20OR%20Apache--2.0-blue)](LICENSE-MIT)
 
 Python bindings for [**Tetration**](https://github.com/Latka-Industries/tetration) — mmap-friendly `.tet` tensor files and the JSON/TOML query engine.
 
-| Install (PyPI) | `pip install tet-py` _(when published)_ |
+| Install (PyPI) | `pip install tet-py` *(when published)* |
 | Import | `import tet` |
 | Rust core | [`tetration`](https://crates.io/crates/tetration) on crates.io |
 | CLI (no Python) | [`tet`](https://github.com/Latka-Industries/tetration) binary from the main repo |
@@ -54,8 +55,11 @@ print(f.datasets())  # catalog dataset names
 summary = f.summary()  # or f.info() — same as `tet info --json`
 print(summary["datasets"][0]["name"])
 
+print(f.mean("temperature"))  # helpers build the query document
+
 doc = {"dataset": "temperature", "mean": []}
-out = f.query(doc)
+plan = f.plan_only(doc)       # plan without -x execution
+out = f.query(doc)            # full execute
 print(out["execution"]["operation_mean"])
 ```
 
@@ -78,6 +82,7 @@ tet-py/
 - [x] `query()` returns `dict` (no `json.loads`)
 - [x] `summary()` / `info()` — dict parity with `tet info --json`
 - [x] `TetError` / `CatalogError` exceptions (not bare `RuntimeError`)
+- [x] `plan_only()`, `mean()`, `sum()` helpers
 - [ ] Typed query helpers (`QueryDocument` builders)
 - [ ] Write path: NumPy → chunk tiles (`TetWriterSession`)
 - [ ] Optional convert extras: `h5py`, `netCDF4`, `zarr`, `pandas` (CSV), `pyarrow` (Parquet)
