@@ -49,11 +49,6 @@ REDUCTION_OPS: dict[str, tuple[str, str]] = {
     "arg_max": _op_fields("arg_max", scalar="argmax_index", reduced="argmax"),
 }
 
-_QUERY_DOC_META = frozenset(
-    {"dataset", "layout_version", "selection", "execution", "output"}
-)
-
-
 def reduction_doc(
     dataset: str, op: str, axes: Sequence[int | str]
 ) -> dict[str, Any]:
@@ -62,12 +57,16 @@ def reduction_doc(
     return {"dataset": dataset, op: list(axes)}
 
 
-def op_key_from_doc(doc: dict[str, Any]) -> str | None:
-    """Single list-style reduction key on the document, if any."""
-    ops = [k for k in doc if k in REDUCTION_OPS and k not in _QUERY_DOC_META]
-    if len(ops) == 1:
-        return ops[0]
-    return None
+# Scalar fields for ops not in REDUCTION_OPS map.
+_EXTRA_SCALAR_FIELDS: dict[str, str] = {
+    "quantile": "operation_quantile",
+    "median": "operation_median",
+}
+
+_MATRIX_FIELDS: dict[str, tuple[str, str]] = {
+    "covariance": ("operation_covariance", "operation_covariance_order"),
+    "correlation": ("operation_correlation", "operation_correlation_order"),
+}
 
 
 @dataclass(frozen=True)
@@ -82,6 +81,10 @@ class QueryResult:
     plan: dict[str, Any] | None
     execution: dict[str, Any] | None
     raw: dict[str, Any]
+    matrix: list[float] | None = None
+    matrix_order: int | None = None
+    histogram_counts: list[float] | None = None
+    histogram_edges: list[float] | None = None
 
     @property
     def value(self) -> float | int | bool | list[float] | list[int] | list[bool]:
@@ -126,6 +129,11 @@ class QueryResult:
         else:
             reduced_shape = None
 
+        matrix: list[float] | None = None
+        matrix_order: int | None = None
+        histogram_counts: list[float] | None = None
+        histogram_edges: list[float] | None = None
+
         if op and op in REDUCTION_OPS:
             scalar_key, reduced_key = REDUCTION_OPS[op]
             if execution.get(scalar_key) is not None:
@@ -133,6 +141,28 @@ class QueryResult:
             reduced_val = execution.get(reduced_key)
             if isinstance(reduced_val, list):
                 reduced = reduced_val
+        elif op and op in _EXTRA_SCALAR_FIELDS:
+            key = _EXTRA_SCALAR_FIELDS[op]
+            if execution.get(key) is not None:
+                scalar = execution[key]
+        elif op == "histogram":
+            counts = execution.get("operation_histogram_counts")
+            edges = execution.get("operation_histogram_edges")
+            if isinstance(counts, list):
+                histogram_counts = counts
+            if isinstance(edges, list):
+                histogram_edges = edges
+            reduced_val = execution.get("operation_reduced_histogram_counts")
+            if isinstance(reduced_val, list):
+                reduced = reduced_val
+        elif op and op in _MATRIX_FIELDS:
+            mat_key, order_key = _MATRIX_FIELDS[op]
+            mat = execution.get(mat_key)
+            if isinstance(mat, list):
+                matrix = mat
+            order = execution.get(order_key)
+            if order is not None:
+                matrix_order = int(order)
 
         return cls(
             accepted=True,
@@ -143,6 +173,10 @@ class QueryResult:
             plan=raw.get("plan") if isinstance(raw.get("plan"), dict) else None,
             execution=execution,
             raw=raw,
+            matrix=matrix,
+            matrix_order=matrix_order,
+            histogram_counts=histogram_counts,
+            histogram_edges=histogram_edges,
         )
 
 

@@ -10,6 +10,13 @@ from tet._errors import UnknownAxisError, UnknownDatasetError
 from tet._file import TetFile
 from tet._native import CatalogError, TetError, core_version
 from tet._query import REDUCTION_OPS, QueryResult
+from tet._query_doc import (
+    QUERY_OP_KEYS,
+    axis_slice,
+    build_query,
+    full_selection,
+    selection_slices,
+)
 
 __version__: str = _native.__version__
 
@@ -32,8 +39,13 @@ def open(path: str | PathLike[str]) -> TetFile:
 __all__ = [
     "CatalogError",
     "Dataset",
+    "QUERY_OP_KEYS",
     "QueryResult",
     "REDUCTION_OPS",
+    "axis_slice",
+    "build_query",
+    "full_selection",
+    "selection_slices",
     "TetError",
     "TetFile",
     "UnknownAxisError",

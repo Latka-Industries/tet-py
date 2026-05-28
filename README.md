@@ -84,6 +84,8 @@ print(tet.typing_stub("data.tet"))  # save output as e.g. data_tet.pyi in your p
 - `execute(..., plan=True)` / `plan_only` — catalog plan only; omit op keys
 - `execute(..., device="cpu")` — sets `execution.device` before execute
 - `raw=True` on `query` / `execute` — full `QueryResponse` dict (debugging, custom ops like `quantile`)
+- `f.quantile` / `f.histogram` / `f.covariance` / `f.correlation` — object-shaped ops
+- `tet.build_query`, `tet.axis_slice`, `tet.selection_slices` — compose `selection` + one op
 
 ## Project layout
 

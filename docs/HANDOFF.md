@@ -66,8 +66,8 @@ Goal: parity with common `tet query -t … -x` embedder paths without hand-rolle
 - [x] `mean` / `sum` / `min` / `max` / `std` / `var` / `count` / `product` / `norm_l1` / `norm_l2` / `median` / `all_finite` / `any_nan` / `arg_min` / `arg_max` — helpers over `query()`; `axis=` by index or `dim_names`
 - [x] `execute(..., raw=False)` default → [`QueryResult`](../python/tet/_query.py) (`.scalar` / `.reduced`); `raw=True` for full wire dict
 - [x] `Dataset`, `iter_datasets()`, `dataset(0)` / `f["name"]` catalog access (Phase 1 hardening)
-- [ ] `quantile`, `histogram`, `covariance`, `correlation` helpers (object-shaped wire ops)
-- [ ] Selection slices — build `QueryDocument` in Python or thin Rust exports
+- [x] `quantile`, `histogram`, `covariance`, `correlation` helpers (object-shaped wire ops)
+- [x] Selection slices — [`build_query`](../python/tet/_query_doc.py), `axis_slice`, `selection_slices`
 - [x] Document query schema → README links `tetration/fixtures/queries/`
 - [x] Errors: `tet.TetError`, `tet.CatalogError`; `OSError` on missing file
 

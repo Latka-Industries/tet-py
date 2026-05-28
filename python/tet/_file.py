@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import json
-from collections.abc import Iterator, Sequence
+from collections.abc import Iterator, Mapping, Sequence
 from os import PathLike
 from pathlib import Path
 from typing import Any, Literal, cast, overload
@@ -16,7 +16,16 @@ from tet._errors import (
     coerce_query_doc,
 )
 from tet._native import TetError
-from tet._query import QueryResult, op_key_from_doc, reduction_doc
+from tet._query import QueryResult, reduction_doc
+from tet._query_doc import (
+    build_query,
+    correlation_op,
+    covariance_op,
+    histogram_op,
+    op_key_from_doc,
+    quantile_op,
+    selection_slices,
+)
 
 
 def _parse_json_response(raw: str) -> dict[str, Any]:
@@ -264,6 +273,28 @@ class TetFile:
         self._require_dataset(dataset)
         return axes_wire(self.dataset(dataset), merged, path=self.path)
 
+    def _execute_doc(
+        self,
+        doc: dict[str, Any],
+        *,
+        device: str | None = None,
+        raw: bool = False,
+        scalar_op: str | None = None,
+    ) -> float | list[float] | dict[str, Any] | QueryResult:
+        if raw:
+            if device is not None:
+                return self.query_execute(doc, device=device, raw=True)
+            return self.query(doc, raw=True)
+        result = self.query_execute(doc, device=device, raw=False)
+        assert isinstance(result, QueryResult)
+        if scalar_op and result.scalar is not None:
+            return result.scalar
+        if scalar_op in ("histogram", "covariance", "correlation"):
+            return result
+        if scalar_op and result.reduced is not None:
+            return result
+        return result
+
     def _reduce(
         self,
         op: str,
@@ -481,3 +512,95 @@ class TetFile:
             int,
             self._reduce("arg_max", dataset, axes, axis=axis, device=device, raw=raw),
         )
+
+    def quantile(
+        self,
+        dataset: str,
+        q: float,
+        axes: Sequence[int | str] | None = None,
+        *,
+        axis: int | str | None = None,
+        selection: Sequence[Mapping[str, Any]] | None = None,
+        device: str | None = None,
+        raw: bool = False,
+    ) -> float | dict[str, Any] | QueryResult:
+        """Quantile ``q`` in ``[0, 1]`` (materialize path in engine)."""
+        ds = self.dataset(dataset)
+        doc = build_query(
+            dataset,
+            selection=selection,
+            quantile=quantile_op(
+                ds, q, axes, axis=axis, path=str(self.path)
+            ),
+        )
+        out = self._execute_doc(doc, device=device, raw=raw, scalar_op="quantile")
+        assert isinstance(out, (float, dict, QueryResult))
+        return out
+
+    def histogram(
+        self,
+        dataset: str,
+        bins: int,
+        axes: Sequence[int | str] | None = None,
+        *,
+        axis: int | str | None = None,
+        min: float | None = None,
+        max: float | None = None,
+        selection: Sequence[Mapping[str, Any]] | None = None,
+        device: str | None = None,
+        raw: bool = False,
+    ) -> QueryResult | dict[str, Any]:
+        """Histogram with ``bins`` buckets (optional ``min`` / ``max``)."""
+        ds = self.dataset(dataset)
+        doc = build_query(
+            dataset,
+            selection=selection,
+            histogram=histogram_op(
+                ds, bins, axes, axis=axis, min=min, max=max, path=str(self.path)
+            ),
+        )
+        out = self._execute_doc(doc, device=device, raw=raw, scalar_op="histogram")
+        assert isinstance(out, (dict, QueryResult))
+        return out
+
+    def covariance(
+        self,
+        dataset: str,
+        axis: int | str,
+        *,
+        selection: Sequence[Mapping[str, Any]] | None = None,
+        device: str | None = None,
+        raw: bool = False,
+    ) -> QueryResult | dict[str, Any]:
+        """Population covariance matrix (rank-2; ``axis`` = observation dimension)."""
+        ds = self.dataset(dataset)
+        doc = build_query(
+            dataset,
+            selection=selection,
+            covariance=covariance_op(ds, axis, path=str(self.path)),
+        )
+        out = self._execute_doc(doc, device=device, raw=raw, scalar_op="covariance")
+        assert isinstance(out, (dict, QueryResult))
+        return out
+
+    def correlation(
+        self,
+        dataset: str,
+        axis: int | str,
+        *,
+        selection: Sequence[Mapping[str, Any]] | None = None,
+        device: str | None = None,
+        raw: bool = False,
+    ) -> QueryResult | dict[str, Any]:
+        """Pearson correlation matrix (rank-2; ``axis`` = observation dimension)."""
+        ds = self.dataset(dataset)
+        doc = build_query(
+            dataset,
+            selection=selection,
+            correlation=correlation_op(ds, axis, path=str(self.path)),
+        )
+        out = self._execute_doc(
+            doc, device=device, raw=raw, scalar_op="correlation"
+        )
+        assert isinstance(out, (dict, QueryResult))
+        return out
