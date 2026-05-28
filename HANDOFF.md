@@ -65,7 +65,7 @@ Goal: parity with common `tet query -t … -x` embedder paths without hand-rolle
 - [ ] `plan_only(doc)` → read plan without full execute
 - [ ] Typed helpers: `mean(dataset, axes=...)`, `sum(...)`, selection slices — build `QueryDocument` in Python or thin Rust exports
 - [ ] Document query schema → link `tetration/fixtures/queries/`
-- [ ] Errors: map `TetError` to Python exception type (`TetError` / `QueryError`)
+- [x] Errors: `tet.TetError`, `tet.CatalogError`; `OSError` on missing file
 
 ### Phase 2 — Write path (P1)
 

@@ -6,7 +6,7 @@ import json
 from typing import Any
 
 import tet._native as _native
-from tet._native import core_version
+from tet._native import CatalogError, TetError, core_version
 
 __version__: str = _native.__version__
 
@@ -36,4 +36,11 @@ def open(path: str | Any) -> TetFile:
     return TetFile(_native.open(path))
 
 
-__all__ = ["TetFile", "__version__", "core_version", "open"]
+__all__ = [
+    "CatalogError",
+    "TetError",
+    "TetFile",
+    "__version__",
+    "core_version",
+    "open",
+]

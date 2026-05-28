@@ -2,24 +2,32 @@
 
 use std::path::PathBuf;
 
-use pyo3::exceptions::PyRuntimeError;
+use pyo3::create_exception;
+use pyo3::exceptions::PyException;
 use pyo3::prelude::*;
 use tetration::catalog::TetFile as CoreTetFile;
 use tetration::query::{
-    ExecuteQueryOptions, QueryDocument, TetError, execute_query_document, parse_query_json,
-    validate_query,
+    execute_query_document, parse_query_json, validate_query, ExecuteQueryOptions,
+    QueryDocument, TetError as QueryError,
 };
 
-fn tet_err(err: TetError) -> PyErr {
-    PyRuntimeError::new_err(err.to_string())
-}
+create_exception!(_native, TetError, PyException, "Query parse, validation, or execution error.");
+create_exception!(
+    _native,
+    CatalogError,
+    PyException,
+    "`.tet` catalog read error (layout, index, codec)."
+);
 
-fn io_err(err: std::io::Error) -> PyErr {
-    PyRuntimeError::new_err(err.to_string())
+fn tet_err(err: QueryError) -> PyErr {
+    match err {
+        QueryError::Catalog(catalog) => catalog_err(catalog),
+        other => TetError::new_err(other.to_string()),
+    }
 }
 
 fn catalog_err(err: tetration::catalog::CatalogError) -> PyErr {
-    PyRuntimeError::new_err(err.to_string())
+    CatalogError::new_err(err.to_string())
 }
 
 fn parse_document(py: Python<'_>, query: &Bound<'_, PyAny>) -> PyResult<QueryDocument> {
@@ -62,7 +70,7 @@ impl PyTetFile {
     /// Footer + catalog summary as JSON.
     fn summary_json(&self) -> PyResult<String> {
         let summary = self.inner.summary().map_err(catalog_err)?;
-        serde_json::to_string(&summary).map_err(|e| PyRuntimeError::new_err(e.to_string()))
+        serde_json::to_string(&summary).map_err(|e| CatalogError::new_err(e.to_string()))
     }
 
     /// Run a query document; returns JSON [`QueryResponse`].
@@ -78,7 +86,7 @@ impl PyTetFile {
             None,
         )
         .map_err(tet_err)?;
-        serde_json::to_string(&response).map_err(|e| PyRuntimeError::new_err(e.to_string()))
+        serde_json::to_string(&response).map_err(|e| TetError::new_err(e.to_string()))
     }
 }
 
@@ -89,13 +97,15 @@ fn core_version() -> &'static str {
 
 #[pyfunction]
 fn open(path: PathBuf) -> PyResult<PyTetFile> {
-    let inner = CoreTetFile::open(&path).map_err(io_err)?;
+    let inner = CoreTetFile::open(&path).map_err(PyErr::from)?;
     Ok(PyTetFile { inner })
 }
 
 #[pymodule]
 fn _native(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add("__version__", env!("CARGO_PKG_VERSION"))?;
+    m.add("TetError", m.py().get_type::<TetError>())?;
+    m.add("CatalogError", m.py().get_type::<CatalogError>())?;
     m.add_function(wrap_pyfunction!(core_version, m)?)?;
     m.add_function(wrap_pyfunction!(open, m)?)?;
     m.add_class::<PyTetFile>()?;
