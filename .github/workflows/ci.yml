@@ -1,0 +1,36 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+jobs:
+  test:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: tet-py
+
+      - uses: actions/checkout@v4
+        with:
+          repository: Latka-Industries/tetration
+          path: tetration
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: 1.95
+
+      - uses: astral-sh/setup-uv@v5
+
+      - name: Test
+        working-directory: tet-py
+        run: |
+          uv sync --extra dev
+          uv run maturin develop
+          uv run pytest -q

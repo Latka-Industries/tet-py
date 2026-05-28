@@ -1,0 +1,6 @@
+[tools]
+rust = "1.95"
+uv = "latest"
+
+[tasks.develop]
+run = "uv run maturin develop"

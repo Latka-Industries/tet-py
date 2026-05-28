@@ -29,8 +29,8 @@ dependencies = []
 dev = ["pytest>=8.0", "maturin>=1.7"]
 
 [project.urls]
-Homepage = "https://github.com/thicclatka/tet-py"
-Repository = "https://github.com/thicclatka/tet-py"
+Homepage = "https://github.com/Latka-Industries/tet-py"
+Repository = "https://github.com/Latka-Industries/tet-py"
 Documentation = "https://github.com/thicclatka/tetration/blob/main/docs/query_engine.md"
 
 [tool.maturin]

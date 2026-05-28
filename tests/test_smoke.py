@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import json
 from pathlib import Path
 
 import pytest
@@ -30,7 +29,7 @@ def test_open_and_mean(sample_path: Path) -> None:
     assert f.path.endswith("sample.tet")
     assert "temperature" in f.datasets()
 
-    out = json.loads(f.query({"dataset": "temperature", "mean": []}))
+    out = f.query({"dataset": "temperature", "mean": []})
     assert out["accepted"] is True
     exec_block = out["execution"]
     assert exec_block is not None

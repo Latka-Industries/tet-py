@@ -31,7 +31,7 @@ This repo expects the Rust library next to it by default:
 ```bash
 cd ~/Code/tet-py
 uv sync --extra dev
-uv run maturin develop
+mise run develop   # or: uv run maturin develop
 uv run python -c "import tet; print(tet.__version__, tet.core_version())"
 uv run pytest -q
 ```
@@ -41,14 +41,13 @@ uv run pytest -q
 ### Example
 
 ```python
-import json
 import tet
 
 f = tet.open("data.tet")
 print(f.datasets())  # catalog dataset names
 
 doc = {"dataset": "temperature", "mean": []}
-out = json.loads(f.query(doc))
+out = f.query(doc)
 print(out["execution"]["operation_mean"])
 ```
 
@@ -68,6 +67,7 @@ tet-py/
 ## Roadmap
 
 - [x] Scaffold: maturin, `tet.open`, `datasets`, `query` (JSON document)
+- [x] `query()` returns `dict` (no `json.loads`)
 - [ ] Typed query helpers (`QueryDocument` builders)
 - [ ] `summary` / `info` parity with `tet info`
 - [ ] Write path: NumPy → chunk tiles (`TetWriterSession`)
