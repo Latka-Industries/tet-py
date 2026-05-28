@@ -38,6 +38,15 @@ def test_sum_helper(sample_path: Path) -> None:
     assert abs(f.sum("temperature") - 21.0) < 1e-5
 
 
+def test_open_expands_tilde(sample_path: Path) -> None:
+    home = Path.home()
+    if not str(sample_path).startswith(str(home)):
+        pytest.skip("fixture not under home directory")
+    tilde_path = "~" + str(sample_path)[len(str(home)) :]
+    with tet.open(tilde_path) as f:
+        assert "temperature" in f.datasets()
+
+
 def test_context_manager_and_class_open(sample_path: Path) -> None:
     with tet.TetFile.open(sample_path) as f:
         assert abs(f.mean("temperature") - 3.5) < 1e-9

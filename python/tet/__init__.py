@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import json
 from collections.abc import Sequence
+from os import PathLike
+from pathlib import Path
 from typing import Any
 
 import tet._native as _native
@@ -18,6 +20,11 @@ def _parse_json_response(raw: str) -> dict[str, Any]:
 
 def _mean_sum_doc(dataset: str, op: str, axes: Sequence[int] | None) -> dict[str, Any]:
     return {"dataset": dataset, op: list(axes) if axes is not None else []}
+
+
+def _resolve_path(path: str | PathLike[str]) -> Path:
+    """Expand `~` and normalize before passing paths to Rust."""
+    return Path(path).expanduser()
 
 
 def _coerce_query_doc(query: Any) -> dict[str, Any]:
@@ -35,9 +42,9 @@ class TetFile:
         self._inner = inner
 
     @classmethod
-    def open(cls, path: str | Any) -> TetFile:
+    def open(cls, path: str | PathLike[str]) -> TetFile:
         """Open `.tet` read-only (same as [`tet.open`])."""
-        return cls(_native.open(path))
+        return cls(_native.open(_resolve_path(path)))
 
     def __enter__(self) -> TetFile:
         return self
@@ -104,7 +111,7 @@ def _scalar_from_execution(out: dict[str, Any], field: str) -> float:
     return float(value)
 
 
-def open(path: str | Any) -> TetFile:
+def open(path: str | PathLike[str]) -> TetFile:
     return TetFile.open(path)
 
 

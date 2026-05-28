@@ -8,3 +8,9 @@ dist/
 target/
 *.egg-info/
 .DS_Store
+
+# maturin / PyO3 build artifacts (use `mise run develop` locally)
+python/tet/_native*.so
+python/tet/_native*.pyd
+*.so
+*.pyd
