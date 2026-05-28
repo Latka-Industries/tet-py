@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import json
 from pathlib import Path
 
 import pytest
@@ -25,15 +24,18 @@ def test_versions() -> None:
     assert tet.core_version()
 
 
+def test_summary_and_info(sample_path: Path) -> None:
+    f = tet.open(sample_path)
+    summary = f.summary()
+    assert f.info() == summary
+    names = [d["name"] for d in summary["datasets"]]
+    assert "temperature" in names
+    assert "superblock" in summary
+
+
 def test_open_and_mean(sample_path: Path) -> None:
     f = tet.open(sample_path)
     assert f.path.endswith("sample.tet")
     assert "temperature" in f.datasets()
 
-    out = json.loads(f.query({"dataset": "temperature", "mean": []}))
-    assert out["accepted"] is True
-    exec_block = out["execution"]
-    assert exec_block is not None
-    mean = exec_block["operation_mean"]
-    assert mean is not None
-    assert abs(mean - 3.5) < 1e-9
+    assert abs(f.mean("temperature") - 3.5) < 1e-9

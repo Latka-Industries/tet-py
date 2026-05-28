@@ -26,9 +26,9 @@ Agent/onboarding doc for **`~/Code/tet-py`**. Parent project: **[tetration](http
 
 ### Not done\*\*
 
-- No PyPI publish, no CI, no git remote assumed
+- No PyPI publish; git remote on **Latka-Industries/tet-py** (private)
 - No typed Python query objects, NumPy buffers, write path, convert extras
-- `query()` returns **JSON strings** only (caller uses `json.loads`)
+- `query()` returns **`dict`** (parsed `QueryResponse` JSON)
 - No `TetFile.open` classmethod (use `tet.open` only)
 
 ## Dev commands (uv)
@@ -49,23 +49,24 @@ Layout: `python/tet/` = facade; `src/lib.rs` = PyO3; tests expect sibling `~/Cod
 
 ### Phase 0 — Repo hygiene (P0)
 
-- [ ] `git init` / push to `github.com/thicclatka/tet-py` (or org)
-- [ ] CI: `uv sync --extra dev` → `maturin build` → `pytest` (macOS + Linux; use `../tetration` checkout or git submodule for fixtures)
+- [x] Push to `github.com/Latka-Industries/tet-py`
+- [x] CI: `.github/workflows/ci.yml` (checkout sibling **tetration**, `uv sync` → `maturin develop` → `pytest`)
 - [ ] Register **`tet-py`** on PyPI (empty/meta release optional) to hold the name
-- [ ] `LICENSE` files (MIT OR Apache-2.0, match tetration)
-- [ ] Link README ↔ tetration Phase 11 when milestones land
+- [x] `LICENSE-MIT` + `LICENSE-APACHE` (dual license, match tetration)
+- [x] README links tetration Phase 11, query fixtures, query_engine docs
 
 ### Phase 1 — Read / query UX (P0)
 
 Goal: parity with common `tet query -t … -x` embedder paths without hand-rolled JSON everywhere.
 
-- [ ] `query()` → return **`dict`** (or small `QueryResult` dataclass) parsed from Rust JSON
-- [ ] Optional: `query_execute(doc, preview=0, device=None)` mapping `ExecuteQueryOptions` + `execution.device`
-- [ ] `info` / `summary`: Pythonic `FileSummary` (wrap `summary_json()` or add Rust helpers)
-- [ ] `plan_only(doc)` → read plan without full execute
-- [ ] Typed helpers: `mean(dataset, axes=...)`, `sum(...)`, selection slices — build `QueryDocument` in Python or thin Rust exports
-- [ ] Document query schema → link `tetration/fixtures/queries/`
-- [ ] Errors: map `TetError` to Python exception type (`TetError` / `QueryError`)
+- [x] `query()` → return **`dict`** (parsed from Rust JSON in Python facade)
+- [x] `query_execute(doc, device=...)` sets `execution.device` (preview still via raw doc / future Rust knob)
+- [x] `info()` / `summary()` → **`dict`** (parsed `summary_json()`; parity with `tet info --json`)
+- [x] `plan_only(doc)` → plan without execution (`ExecuteQueryOptions::plan_only`)
+- [x] `mean(dataset, axes=...)`, `sum(...)` — thin helpers over `query()`
+- [ ] More ops / selection slices — build `QueryDocument` in Python or thin Rust exports
+- [x] Document query schema → README links `tetration/fixtures/queries/`
+- [x] Errors: `tet.TetError`, `tet.CatalogError`; `OSError` on missing file
 
 ### Phase 2 — Write path (P1)
 
@@ -99,14 +100,14 @@ Rust CLI **`tet convert`** remains the fast path for HDF5/NetCDF/Zarr on machine
 ### Phase 4 — Release engineering (P1)
 
 - [ ] Release: pin `tetration = "x.y.z"` from crates.io; remove `path = "../tetration"` in published `Cargo.toml` (or maturin/source dist policy)
-- [ ] Manylinux / macOS / Windows wheels via maturin-action
+- [ ] Linux / macOS / Windows wheels via maturin-action
 - [ ] Version policy: `tet-py` version tracks compatible `tetration` minor (document in README)
 - [ ] `numpy` as dependency when buffer APIs land
 
 ### Phase 5 — Nice-to-have (P2)
 
-- [ ] Context manager: `with tet.open(path) as f:`
-- [ ] `tet.TetFile.open` classmethod if desired (`PyType` import in PyO3)
+- [x] Context manager: `with tet.open(path) as f:`
+- [x] `tet.TetFile.open` classmethod
 - [ ] Submodule `tet.convert`, `tet.query` for large API surface
 - [ ] Jupyter / xarray accessor sketch (`ds.tet.write(...)` out of scope unless requested)
 - [ ] Shared fixtures: git submodule `tetration` or vendor `fixtures/small/` for CI without sibling path
