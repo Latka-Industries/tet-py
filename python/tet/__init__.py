@@ -24,6 +24,7 @@ from tet._query_doc import (
     full_selection,
     selection_slices,
 )
+from tet._writer import TetWriter, write_dataset
 from tet._transform import TransformWrite
 from tet._transform_result import (
     NumpyTransformResult,
@@ -91,6 +92,7 @@ __all__ = [
     "SpillTransformResult",
     "TransformResult",
     "TransformStats",
+    "TetWriter",
     "TransformWrite",
     "axis_slice",
     "build_query",
@@ -104,4 +106,5 @@ __all__ = [
     "core_version",
     "open",
     "typing_stub",
+    "write_dataset",
 ]

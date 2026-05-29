@@ -289,11 +289,11 @@ On clean finite data, `nan_mean` / `nan_std` match `mean` / `std`.
 
 Sink-first API only: **`f.transform.to_<sink>.<method>(dataset, ...)`**. For arbitrary wire docs use :func:`build_query` + :meth:`~tet.TetFile.execute`.
 
-| Sink | Example | Returns |
-| ---- | ------- | ------- |
-| ``to_numpy`` | ``f.transform.to_numpy.zscore("a")`` | ``numpy.ndarray`` (full logical selection) |
-| ``to_spill`` | ``f.transform.to_spill.softmax("a", path="…")`` | :class:`~tet.SpillTransformResult` (``.path``) |
-| ``to_sidecar`` | ``f.transform.to_sidecar.center("a")`` | :class:`~tet.SidecarTransformResult` (``.open()``) |
+| Sink         | Example                                       | Returns                                          |
+| ------------ | --------------------------------------------- | ------------------------------------------------ |
+| `to_numpy`   | `f.transform.to_numpy.zscore("a")`            | `numpy.ndarray` (full logical selection)         |
+| `to_spill`   | `f.transform.to_spill.softmax("a", path="…")` | :class:`~tet.SpillTransformResult` (`.path`)     |
+| `to_sidecar` | `f.transform.to_sidecar.center("a")`          | :class:`~tet.SidecarTransformResult` (`.open()`) |
 
 Methods on each sink: `zscore`, `minmax`, `l1`, `l2`, `center`, `scale`, `log1p`, `sqrt`, `softmax`.
 
@@ -305,20 +305,20 @@ s = f.transform.to_spill.softmax("a", path="/tmp/out.bin")  # when RAM export wo
 s.path                               # Path to raw LE tensor bytes
 ```
 
-See [Memory budget](#memory-budget) for ``to_numpy`` vs ``to_spill``.
+See [Memory budget](#memory-budget) for `to_numpy` vs `to_spill`.
 
 ```python
 # low-level wire (any write token, including switch):
 f.execute(build_query("a", transform={"method": "zscore"}))
 ```
 
-Returns :class:`~tet.QueryResult` (or wire ``dict`` when ``raw=True``) for generic execute; not a single scalar.
+Returns :class:`~tet.QueryResult` (or wire `dict` when `raw=True`) for generic execute; not a single scalar.
 
 ---
 
 ## `read_numpy`
 
-Materialize a dataset selection (no reduction) into RAM as ``numpy.ndarray``.
+Materialize a dataset selection (no reduction) into RAM as `numpy.ndarray`.
 
 ```python
 arr = f.read_numpy("temperature")
@@ -328,33 +328,33 @@ arr = f.dataset("temperature").to_numpy(f)
 arr = f.read_numpy("a", selection=tet.selection_slices(tet.axis_slice(0, 100)))
 ```
 
-Integer dtypes (`i32`, `u8`, …) are supported where the engine materializes them; ``f16`` / ``u32`` / ``u64`` are not yet exported.
+Integer dtypes (`i32`, `u8`, …) are supported where the engine materializes them; `f16` / `u32` / `u64` are not yet exported.
 
-**Memory:** ``read_numpy`` decodes the **full logical selection** into a new array (copy). There is no ``memory_budget_bytes`` preflight on this path today — if the selection is huge, slice it or use the wire **``spill``** export via :meth:`~tet.TetFile.execute` (see [Memory budget](#memory-budget)). See also [tetration query engine — memory budget](https://github.com/Latka-Industries/tetration/blob/main/docs/query_engine.md#memory-budget-and-execution-strategies).
+**Memory:** `read_numpy` decodes the **full logical selection** into a new array (copy). There is no `memory_budget_bytes` preflight on this path today — if the selection is huge, slice it or use the wire **`spill`** export via :meth:`~tet.TetFile.execute` (see [Memory budget](#memory-budget)). See also [tetration query engine — memory budget](https://github.com/Latka-Industries/tetration/blob/main/docs/query_engine.md#memory-budget-and-execution-strategies).
 
 ---
 
 ## Memory budget
 
-The query engine resolves a dense-RAM cap (**``memory_budget_bytes``**) the same way as ``tet query -x``. Precedence (first match wins):
+The query engine resolves a dense-RAM cap (**`memory_budget_bytes`**) the same way as `tet query -x`. Precedence (first match wins):
 
-1. Query ``execution.memory_budget_bytes``
-2. Per-file chunk-index header ``memory_budget_bytes`` (footer / ``catalog.file_execution``)
-3. Query ``execution.memory_budget_percent`` (or ``memory_budget_percent_bps`` on the wire)
+1. Query `execution.memory_budget_bytes`
+2. Per-file chunk-index header `memory_budget_bytes` (footer / `catalog.file_execution`)
+3. Query `execution.memory_budget_percent` (or `memory_budget_percent_bps` on the wire)
 4. Per-file header percent (**0** → engine default **25%** of detected host RAM)
 
-Resolved values appear on execution responses as ``execution.memory_budget_bytes``, ``execution.logical_selection_bytes``, and related fields when you :meth:`~tet.TetFile.execute` with ``raw=True``.
+Resolved values appear on execution responses as `execution.memory_budget_bytes`, `execution.logical_selection_bytes`, and related fields when you :meth:`~tet.TetFile.execute` with `raw=True`.
 
-### ``transform.to_numpy`` (wire ``write: ram``)
+### `transform.to_numpy` (wire `write: ram`)
 
-**Preflight:** if the logical selection size exceeds the resolved budget, the engine returns :class:`~tet.TetError` (validation) — same rule as CLI ``write: ram``. Message shape:
+**Preflight:** if the logical selection size exceeds the resolved budget, the engine returns :class:`~tet.TetError` (validation) — same rule as CLI `write: ram`. Message shape:
 
 ```text
 logical selection (N elements, B bytes) exceeds memory_budget_bytes (M);
 use `write`: `switch` or `spill`, or raise execution.memory_budget_bytes
 ```
 
-In Python, use **`to_spill`** instead of ``switch``:
+In Python, use **`to_spill`** instead of `switch`:
 
 ```python
 # in-RAM (fails when selection > budget)
@@ -365,22 +365,67 @@ s = f.transform.to_spill.zscore("a", path="/tmp/a_zscore.f32.bin")
 arr = np.fromfile(s.path, dtype=np.float32).reshape(s.shape)
 ```
 
-``to_numpy`` only supports **``f32`` / ``f64``** transforms. Spill files are dtype-native little-endian; use ``s.shape`` and the source dataset dtype tag to pick ``np.float32`` vs ``np.float64``.
+`to_numpy` only supports **`f32` / `f64`** transforms. Spill files are dtype-native little-endian; use `s.shape` and the source dataset dtype tag to pick `np.float32` vs `np.float64`.
 
-High-level transform methods accept ``device=`` only. To raise the budget for one call, build the wire document yourself (``execution.memory_budget_bytes`` or ``memory_budget_percent``) and use the native materialize path, or execute with ``raw=True`` to inspect ``execution.memory_budget_bytes`` after a plan.
+High-level transform methods accept `device=` only. To raise the budget for one call, build the wire document yourself (`execution.memory_budget_bytes` or `memory_budget_percent`) and use the native materialize path, or execute with `raw=True` to inspect `execution.memory_budget_bytes` after a plan.
 
-### ``read_numpy``
+### `read_numpy`
 
-No budget preflight — the full selection is materialized. For tensors larger than RAM, **slice** the selection, or spill at the wire layer (top-level ``"spill": "path"`` on a selection-only query — no ``transform`` key) and load with NumPy from the file.
+No budget preflight — the full selection is materialized. For tensors larger than RAM, **slice** the selection, or spill at the wire layer (top-level `"spill": "path"` on a selection-only query — no `transform` key) and load with NumPy from the file.
 
 ### Reductions vs dense export
 
-| API | Over budget |
-| --- | ----------- |
-| ``mean``, ``sum``, streaming folds | Chunk streaming / GPU fold — no full dense buffer |
-| ``median``, ``quantile``, ``histogram`` | Engine ``temp_spill_materialize`` or refuse — tier-C materialize |
-| ``transform.to_numpy`` | **Refuse** (use ``to_spill``) |
-| ``read_numpy`` | **No preflight** (slice or wire spill) |
+| API                               | Over budget                                                    |
+| --------------------------------- | -------------------------------------------------------------- |
+| `mean`, `sum`, streaming folds    | Chunk streaming / GPU fold — no full dense buffer              |
+| `median`, `quantile`, `histogram` | Engine `temp_spill_materialize` or refuse — tier-C materialize |
+| `transform.to_numpy`              | **Refuse** (use `to_spill`)                                    |
+| `read_numpy`                      | **No preflight** (slice or wire spill)                         |
+
+---
+
+## `write_dataset` / :class:`~tet.TetWriter`
+
+Write row-major **`float32` / `float64`** NumPy arrays to a new or appended `.tet` file via tetration :class:`TetWriterSession`.
+
+```python
+import numpy as np
+import tet
+
+arr = np.arange(6, dtype=np.float32).reshape(2, 3)
+
+# one-shot
+tet.write_dataset("out.tet", "temperature", arr, chunk_shape=(2, 3))
+
+# session (multiple datasets, history, footer metadata)
+w = tet.TetWriter.create("out.tet")
+w.push_history_event("write", "notebook")
+w.write_dataset(
+    "temperature",
+    arr,
+    chunk_shape=(2, 3),
+    attrs={"units": "K"},
+    dim_names=("row", "col"),
+    coords={"row": ("r0", "r1")},
+)
+w.commit()
+
+# append another dataset to an existing file
+w = tet.TetWriter.open_append("out.tet")
+w.write_dataset("humidity", arr)
+w.commit()
+```
+
+| Parameter     | Notes                                                   |
+| ------------- | ------------------------------------------------------- |
+| `chunk_shape` | Tile geometry; defaults to `array.shape` (single chunk) |
+| `attrs`       | `str → str` footer CF-style attributes                  |
+| `dim_names`   | One name per axis (optional)                            |
+| `coords`      | Axis name → coordinate label list (optional)            |
+
+On :meth:`TetWriter.commit`, footer `tool` is set to `tet-py` and `library_version` to the extension version. Default history row `write` is added when none were pushed (same as Rust session).
+
+Roundtrip: :func:`write_dataset` → :meth:`TetFile.read_numpy` → reductions.
 
 ---
 
@@ -420,13 +465,15 @@ build_query("a", selection=sel, min=[1])
 
 ## Entry points (same schema as CLI)
 
-| Python                             | CLI parity                            |
-| ---------------------------------- | ------------------------------------- |
-| `f.query(doc)`                     | `tet query -x` (execute, JSON string) |
-| `f.plan_only(doc)`                 | `tet query` without `-x`              |
-| `f.query_execute(doc, device=...)` | execute with `execution.device`       |
-| `f.execute(doc, plan=True)`        | plan only                             |
-| `f.execute(doc, raw=True)`         | full wire dict                        |
+| Python                                 | CLI parity                              |
+| -------------------------------------- | --------------------------------------- |
+| `f.query(doc)`                         | `tet query -x` (execute, JSON string)   |
+| `f.plan_only(doc)`                     | `tet query` without `-x`                |
+| `f.query_execute(doc, device=...)`     | execute with `execution.device`         |
+| `f.execute(doc, plan=True)`            | plan only                               |
+| `f.read_numpy(dataset, selection=...)` | Materialize selection → `numpy.ndarray` |
+| `tet.write_dataset(path, name, array)` | Create one-dataset `.tet` from NumPy    |
+| `tet.TetWriter.create(path)`           | Buffered multi-dataset writer           |
 
 `doc` may be a **`dict`** or **JSON string**.
 
@@ -445,7 +492,7 @@ f.query({"dataset": "a", "mean": []})
 | `UnknownDatasetError` | Bad dataset name on `f.dataset()` / reductions |
 | `UnknownAxisError`    | Bad index or `dim_names` label                 |
 | `TetError`            | Query parse, validation, or execution          |
-| `CatalogError`        | File layout / catalog read                     |
+| `CatalogError`        | File layout / catalog read / write validation  |
 
 Optional per-file stubs:
 
@@ -464,7 +511,10 @@ norm_l1, norm_l2, median, all_finite, any_nan, any_inf,
 arg_min, arg_max,
 nan_count, inf_count, null_count, nan_mean, nan_std,
 quantile, histogram, covariance, correlation,
-transform.to_numpy.*, transform.to_spill.*, transform.to_sidecar.*
+transform.to_numpy.*, transform.to_spill.*, transform.to_sidecar.*,
+read_numpy
 ```
+
+Write: `tet.TetWriter`, `tet.write_dataset`.
 
 Plus: `execute`, `query`, `query_execute`, `plan_only`, `dataset`, `summary`, `info`.

@@ -86,14 +86,14 @@ Goal: make **NumPy** the primary Python array surface for `.tet` (read and write
 
 **Write (NumPy → `.tet`)** — no Rust HDF5/NetCDF in wheels.
 
-- [ ] Expose `TetWriterSession` / commit path from tetration catalog API
-- [ ] `write_dataset(name, array: numpy.ndarray, chunk_shape=..., attrs=..., coords=...)`
-- [ ] Footer metadata + history events on commit
+- [x] Expose `TetWriterSession` / commit path from tetration catalog API
+- [x] `write_dataset(name, array: numpy.ndarray, chunk_shape=..., attrs=..., coords=...)`
+- [x] Footer metadata + history events on commit
 
 **Tests**
 
-- [ ] Roundtrip: `write_dataset` → `read_numpy` → `mean`/`sum` vs golden
-- [ ] Small fixture only in CI; skip/multi-GB guarded locally
+- [x] Roundtrip: `write_dataset` → `read_numpy` → `mean`/`sum` vs golden
+- [x] Small fixture only in CI; skip/multi-GB guarded locally
 
 ### Phase 3 — Ecosystem convert (P1, Python-only)
 

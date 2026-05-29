@@ -6,10 +6,10 @@ use pyo3::types::PyAny;
 use tetration::query::{DenseBuffer, DenseMaterializeOutcome};
 
 /// Build a shaped `numpy.ndarray` from a dense materialize outcome.
-pub(crate) fn outcome_to_py<'py>(
-    py: Python<'py>,
+pub(crate) fn outcome_to_py(
+    py: Python<'_>,
     outcome: DenseMaterializeOutcome,
-) -> PyResult<Bound<'py, PyAny>> {
+) -> PyResult<Bound<'_, PyAny>> {
     let shape: Vec<usize> = outcome
         .shape
         .iter()
