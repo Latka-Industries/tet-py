@@ -9,6 +9,8 @@ from __future__ import annotations
 
 from os import PathLike
 
+import numpy as np
+
 import tet._native as _native
 from tet._catalog import Dataset
 from tet._errors import UnknownAxisError, UnknownDatasetError
@@ -21,6 +23,14 @@ from tet._query_doc import (
     build_query,
     full_selection,
     selection_slices,
+)
+from tet._transform import TransformWrite
+from tet._transform_result import (
+    NumpyTransformResult,
+    SidecarTransformResult,
+    SpillTransformResult,
+    TransformResult,
+    TransformStats,
 )
 
 __version__: str = _native.__version__
@@ -73,9 +83,15 @@ def open(path: str | PathLike[str]) -> TetFile:
 __all__ = [
     "CatalogError",
     "Dataset",
+    "NumpyTransformResult",
     "QUERY_OP_KEYS",
     "QueryResult",
     "REDUCTION_OPS",
+    "SidecarTransformResult",
+    "SpillTransformResult",
+    "TransformResult",
+    "TransformStats",
+    "TransformWrite",
     "axis_slice",
     "build_query",
     "full_selection",

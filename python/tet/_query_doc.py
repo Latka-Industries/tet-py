@@ -101,6 +101,31 @@ def wire_axis_fields(
     return {"axes": wire}
 
 
+def build_selection_query(
+    dataset: str,
+    *,
+    selection: Sequence[Mapping[str, Any]] | None = None,
+) -> dict[str, Any]:
+    """Build a selection-only query document (materialize / ``read_numpy``).
+
+    Parameters
+    ----------
+    dataset : str
+        Target dataset name.
+    selection : sequence of mapping, optional
+        Per-axis slices; omit for the full tensor.
+
+    Returns
+    -------
+    dict
+        Wire document with ``"dataset"`` and optional ``"selection"`` only.
+    """
+    doc: dict[str, Any] = {"dataset": dataset}
+    if selection is not None:
+        doc["selection"] = [dict(s) for s in selection]
+    return doc
+
+
 def build_query(
     dataset: str,
     *,

@@ -27,7 +27,7 @@ Agent/onboarding doc for **`~/Code/tet-py`**. Parent project: **[tetration](http
 ### Not done\*\*
 
 - No PyPI publish; git remote on **Latka-Industries/tet-py** (private)
-- No NumPy read/write (`read_numpy` / `write_dataset`); no convert extras
+- NumPy **read** + transform `to_numpy` shipped; **write** (`write_dataset`) and convert extras not yet
 - `query()` returns **`dict`** (parsed `QueryResponse` JSON)
 - No `TetFile.open` classmethod (use `tet.open` only)
 
@@ -75,12 +75,13 @@ Goal: parity with common `tet query -t … -x` embedder paths without hand-rolle
 
 Goal: make **NumPy** the primary Python array surface for `.tet` (read and write). Add `numpy` as a dependency when these APIs land. Decode/materialize stays in Rust (`materialize_read_plan_*`, `TetWriterSession`); Python gets `ndarray` views or copies.
 
-**Read (`.tet` → NumPy)** — tetration already materializes selections in Rust; tet-py does not expose it yet.
+**Read (`.tet` → NumPy)** — dense export via PyO3 + tetration `embed_materialize`.
 
-- [ ] `read_numpy(dataset, selection=...)` (or `Dataset.to_numpy()`) → `numpy.ndarray` with catalog shape / dtype
-- [ ] PyO3 wrapper over `materialize_read_plan_f32_le` / `_f64_` (and dtype routing); copy into NumPy (v1)
+- [x] `read_numpy(dataset, selection=...)` (or `Dataset.to_numpy()`) → `numpy.ndarray` with catalog shape / dtype
+- [x] `transform.to_numpy.*` → full transformed `numpy.ndarray` (wire `write: ram`; budget preflight)
+- [x] PyO3 wrapper over `materialize_read_plan_*` / `materialize_query_transform_ram`; copy into NumPy (v1)
 - [ ] Optional: `query_execute(..., preview=N)` → `ndarray` for capped `execution.*_preview` samples
-- [ ] Document RAM budget: large selections use spill/temp paths in the engine (same as CLI)
+- [x] Document RAM budget: `to_numpy` vs `to_spill`, `read_numpy` slice/spill notes ([`operations.md`](operations.md#memory-budget))
 - [ ] Defer zero-copy mmap → NumPy until copy path is stable (P2 nice-to-have)
 
 **Write (NumPy → `.tet`)** — no Rust HDF5/NetCDF in wheels.
@@ -151,7 +152,7 @@ User code  →  import tet  →  python/tet/__init__.py
 | Horizon    | Target                                                                                         |
 | ---------- | ---------------------------------------------------------------------------------------------- |
 | **Short**  | Stable read/query API, CI, PyPI alpha `0.1.x`, docs + examples                                 |
-| **Medium** | NumPy read/write + convert extras; embedders replace subprocess `tet`                        |
+| **Medium** | NumPy read/write + convert extras; embedders replace subprocess `tet`                          |
 | **Long**   | Versioned wheels per platform; optional alignment with tetration **C ABI** for non-Python only |
 
 **Success:** `pip install tet-py` → `import tet` → open `.tet` → query or **`read_numpy`** → optional **`write_dataset`** / convert from CSV/Parquet/HDF5 via extras — without requiring Rust on the end user machine.

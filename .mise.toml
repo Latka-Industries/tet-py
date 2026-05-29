@@ -4,3 +4,6 @@ uv = "latest"
 
 [tasks.develop]
 run = "uv run maturin develop"
+
+[tasks.mypy]
+run = "uv run mypy"

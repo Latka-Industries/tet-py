@@ -5,9 +5,14 @@ from __future__ import annotations
 from collections.abc import Iterator, Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+import numpy as np
 
 from tet._errors import UnknownAxisError
+
+if TYPE_CHECKING:
+    from tet._file import TetFile
 
 
 @dataclass(frozen=True, slots=True)
@@ -82,6 +87,28 @@ class Dataset:
                 shape=self.shape,
                 dim_names=self.dim_names,
             ) from exc
+
+    def to_numpy(
+        self,
+        file: TetFile,
+        selection: Sequence[Mapping[str, Any]] | None = None,
+    ) -> np.ndarray:
+        """Materialize this dataset (or a sub-selection) as ``numpy.ndarray``.
+
+        Parameters
+        ----------
+        file : TetFile
+            Open handle to the ``.tet`` that contains this dataset.
+        selection : sequence of dict, optional
+            Per-axis slices; omit for the full tensor.
+
+        Returns
+        -------
+        numpy.ndarray
+        """
+        from tet._numpy import read_numpy_array
+
+        return read_numpy_array(file, self.name, selection=selection)
 
 
 def dataset_from_summary(

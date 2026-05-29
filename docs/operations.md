@@ -1,6 +1,6 @@
 # Query operations
 
-`tet` exposes one operation per query document. Prefer **methods on** [`TetFile`](../python/tet/_file.py) (`f.mean(...)`, `f.quantile(...)`, …); use [`build_query`](../python/tet/_query_doc.py) when you need the wire dict explicitly.
+`tet` exposes one operation per query document. Prefer **methods on** [`TetFile`](../python/tet/_file.py) (`f.mean(...)`, `f.quantile(...)`, `f.transform.to_numpy.zscore(...)`, …); use [`build_query`](../python/tet/_query_doc.py) when you need the wire dict explicitly.
 
 Fixtures in examples (sibling **tetration** repo):
 
@@ -81,24 +81,24 @@ f.execute(doc, device="cpu")            # sets execution.device
 
 Wire form: `"<op>": [<axis indices>]` — `[]` means reduce all axes.
 
-| Method       | Result (full reduce) | Notes                                                     |
-| ------------ | -------------------- | --------------------------------------------------------- |
-| `mean`       | `float`              | Arithmetic mean                                           |
-| `sum`        | `float`              | Sum                                                       |
-| `min`        | `float`              | Minimum                                                   |
-| `max`        | `float`              | Maximum                                                   |
-| `count`      | `int`                | Element count (wire op); see `numel` below                  |
-| `numel`      | `int`                | Same as `count` — Python alias (wire still `"count"`)     |
-| `std`        | `float`              | Population std, `ddof=0`; supports `axis` / `axes`        |
-| `var`        | `float`              | Population variance, `ddof=0`; supports `axis` / `axes`   |
-| `product`    | `float`              | Product of elements                                       |
-| `norm_l1`    | `float`              | L1 norm                                                   |
-| `norm_l2`    | `float`              | √(sum of squares)                                         |
-| `median`     | `float`              | Median (materializes selection)                           |
-| `all_finite` | `bool`               | All elements finite                                       |
-| `any_nan`    | `bool`               | Any NaN present                                           |
-| `arg_min`    | `int`                | Flat index of minimum                                     |
-| `arg_max`    | `int`                | Flat index of maximum                                     |
+| Method       | Result (full reduce) | Notes                                                   |
+| ------------ | -------------------- | ------------------------------------------------------- |
+| `mean`       | `float`              | Arithmetic mean                                         |
+| `sum`        | `float`              | Sum                                                     |
+| `min`        | `float`              | Minimum                                                 |
+| `max`        | `float`              | Maximum                                                 |
+| `count`      | `int`                | Element count (wire op); see `numel` below              |
+| `numel`      | `int`                | Same as `count` — Python alias (wire still `"count"`)   |
+| `std`        | `float`              | Population std, `ddof=0`; supports `axis` / `axes`      |
+| `var`        | `float`              | Population variance, `ddof=0`; supports `axis` / `axes` |
+| `product`    | `float`              | Product of elements                                     |
+| `norm_l1`    | `float`              | L1 norm                                                 |
+| `norm_l2`    | `float`              | √(sum of squares)                                       |
+| `median`     | `float`              | Median (materializes selection)                         |
+| `all_finite` | `bool`               | All elements finite                                     |
+| `any_nan`    | `bool`               | Any NaN present                                         |
+| `arg_min`    | `int`                | Flat index of minimum                                   |
+| `arg_max`    | `int`                | Flat index of maximum                                   |
 
 ### `mean`, `sum`, `min`, `max`
 
@@ -127,10 +127,10 @@ f.execute({"dataset": "a", "max": [0]})   # reduce axis 0
 
 `count` / `numel` is how many **values** are aggregated in the selection — like NumPy **`arr.size`**, not **`len(arr)`** (first-axis length only).
 
-| Call | Result (shape `(34, 64)`, full dataset) |
-| ---- | --------------------------------------- |
-| `f.numel("a")` or `f.count("a")` | `2176` (= 34 × 64, all axes reduced) |
-| `f.numel("a", axis=0)` | length-`64` vector; each entry is `34` (elements combined along axis 0) |
+| Call                             | Result (shape `(34, 64)`, full dataset)                                 |
+| -------------------------------- | ----------------------------------------------------------------------- |
+| `f.numel("a")` or `f.count("a")` | `2176` (= 34 × 64, all axes reduced)                                    |
+| `f.numel("a", axis=0)`           | length-`64` vector; each entry is `34` (elements combined along axis 0) |
 
 Counts **every** stored element (including NaN/inf). For NaN / inf / fill-missing tallies use :meth:`~tet.TetFile.nan_count`, :meth:`~tet.TetFile.inf_count`, and :meth:`~tet.TetFile.null_count`.
 
@@ -261,14 +261,14 @@ f.execute({"dataset": "temperature", "correlation": {"axis": 1}})
 
 Wire form matches list-style reductions unless noted.
 
-| Method       | Result (full reduce) | Notes                                      |
-| ------------ | -------------------- | ------------------------------------------ |
-| `nan_count`  | `int` / `float`      | Count of NaN elements                      |
-| `inf_count`  | `int` / `float`      | Count of ±infinity elements                |
-| `null_count` | `int` / `float`      | Fill-missing count; optional `fill=`       |
-| `any_inf`    | `bool`               | True when any ±infinity present            |
-| `nan_mean`   | `float`              | Mean skipping NaNs (same axes as `mean`)   |
-| `nan_std`    | `float`              | Population std skipping NaNs (`ddof=0`)    |
+| Method       | Result (full reduce) | Notes                                    |
+| ------------ | -------------------- | ---------------------------------------- |
+| `nan_count`  | `int` / `float`      | Count of NaN elements                    |
+| `inf_count`  | `int` / `float`      | Count of ±infinity elements              |
+| `null_count` | `int` / `float`      | Fill-missing count; optional `fill=`     |
+| `any_inf`    | `bool`               | True when any ±infinity present          |
+| `nan_mean`   | `float`              | Mean skipping NaNs (same axes as `mean`) |
+| `nan_std`    | `float`              | Population std skipping NaNs (`ddof=0`)  |
 
 ```python
 f.nan_count("a")
@@ -287,20 +287,100 @@ On clean finite data, `nan_mean` / `nan_std` match `mean` / `std`.
 
 ## `transform`
 
-Wire: `"transform": { "method": …, optional "axis" / "axes" }` plus top-level `"write"`.
+Sink-first API only: **`f.transform.to_<sink>.<method>(dataset, ...)`**. For arbitrary wire docs use :func:`build_query` + :meth:`~tet.TetFile.execute`.
 
-Methods: `zscore`, `minmax`, `l1`, `l2`, `center`, `scale`, `log1p`, `sqrt`, `softmax`.
+| Sink | Example | Returns |
+| ---- | ------- | ------- |
+| ``to_numpy`` | ``f.transform.to_numpy.zscore("a")`` | ``numpy.ndarray`` (full logical selection) |
+| ``to_spill`` | ``f.transform.to_spill.softmax("a", path="…")`` | :class:`~tet.SpillTransformResult` (``.path``) |
+| ``to_sidecar`` | ``f.transform.to_sidecar.center("a")`` | :class:`~tet.SidecarTransformResult` (``.open()``) |
+
+Methods on each sink: `zscore`, `minmax`, `l1`, `l2`, `center`, `scale`, `log1p`, `sqrt`, `softmax`.
 
 ```python
-r = f.transform("a", "zscore")          # write="switch" by default
-r.execution["operation_mean"]           # pass-1 fold stats
-r.execution.get("f32_preview")          # transformed preview when present
+arr = f.transform.to_numpy.zscore("a")   # numpy.ndarray; fails if selection > memory_budget_bytes
+arr.mean()
 
-f.transform("a", "center", axis=0, write="ram")
-f.transform("a", "softmax", write={"target": "spill", "path": "/tmp/out.bin"})
+s = f.transform.to_spill.softmax("a", path="/tmp/out.bin")  # when RAM export would fail
+s.path                               # Path to raw LE tensor bytes
 ```
 
-Returns :class:`~tet.QueryResult` (or wire ``dict`` when ``raw=True``); not a single scalar.
+See [Memory budget](#memory-budget) for ``to_numpy`` vs ``to_spill``.
+
+```python
+# low-level wire (any write token, including switch):
+f.execute(build_query("a", transform={"method": "zscore"}))
+```
+
+Returns :class:`~tet.QueryResult` (or wire ``dict`` when ``raw=True``) for generic execute; not a single scalar.
+
+---
+
+## `read_numpy`
+
+Materialize a dataset selection (no reduction) into RAM as ``numpy.ndarray``.
+
+```python
+arr = f.read_numpy("temperature")
+arr = f.dataset("temperature").to_numpy(f)
+
+# sub-selection (preferred for large tensors)
+arr = f.read_numpy("a", selection=tet.selection_slices(tet.axis_slice(0, 100)))
+```
+
+Integer dtypes (`i32`, `u8`, …) are supported where the engine materializes them; ``f16`` / ``u32`` / ``u64`` are not yet exported.
+
+**Memory:** ``read_numpy`` decodes the **full logical selection** into a new array (copy). There is no ``memory_budget_bytes`` preflight on this path today — if the selection is huge, slice it or use the wire **``spill``** export via :meth:`~tet.TetFile.execute` (see [Memory budget](#memory-budget)). See also [tetration query engine — memory budget](https://github.com/Latka-Industries/tetration/blob/main/docs/query_engine.md#memory-budget-and-execution-strategies).
+
+---
+
+## Memory budget
+
+The query engine resolves a dense-RAM cap (**``memory_budget_bytes``**) the same way as ``tet query -x``. Precedence (first match wins):
+
+1. Query ``execution.memory_budget_bytes``
+2. Per-file chunk-index header ``memory_budget_bytes`` (footer / ``catalog.file_execution``)
+3. Query ``execution.memory_budget_percent`` (or ``memory_budget_percent_bps`` on the wire)
+4. Per-file header percent (**0** → engine default **25%** of detected host RAM)
+
+Resolved values appear on execution responses as ``execution.memory_budget_bytes``, ``execution.logical_selection_bytes``, and related fields when you :meth:`~tet.TetFile.execute` with ``raw=True``.
+
+### ``transform.to_numpy`` (wire ``write: ram``)
+
+**Preflight:** if the logical selection size exceeds the resolved budget, the engine returns :class:`~tet.TetError` (validation) — same rule as CLI ``write: ram``. Message shape:
+
+```text
+logical selection (N elements, B bytes) exceeds memory_budget_bytes (M);
+use `write`: `switch` or `spill`, or raise execution.memory_budget_bytes
+```
+
+In Python, use **`to_spill`** instead of ``switch``:
+
+```python
+# in-RAM (fails when selection > budget)
+arr = f.transform.to_numpy.zscore("a")
+
+# dense row-major LE bytes on disk (no RAM cap on output size; path allowlist applies)
+s = f.transform.to_spill.zscore("a", path="/tmp/a_zscore.f32.bin")
+arr = np.fromfile(s.path, dtype=np.float32).reshape(s.shape)
+```
+
+``to_numpy`` only supports **``f32`` / ``f64``** transforms. Spill files are dtype-native little-endian; use ``s.shape`` and the source dataset dtype tag to pick ``np.float32`` vs ``np.float64``.
+
+High-level transform methods accept ``device=`` only. To raise the budget for one call, build the wire document yourself (``execution.memory_budget_bytes`` or ``memory_budget_percent``) and use the native materialize path, or execute with ``raw=True`` to inspect ``execution.memory_budget_bytes`` after a plan.
+
+### ``read_numpy``
+
+No budget preflight — the full selection is materialized. For tensors larger than RAM, **slice** the selection, or spill at the wire layer (top-level ``"spill": "path"`` on a selection-only query — no ``transform`` key) and load with NumPy from the file.
+
+### Reductions vs dense export
+
+| API | Over budget |
+| --- | ----------- |
+| ``mean``, ``sum``, streaming folds | Chunk streaming / GPU fold — no full dense buffer |
+| ``median``, ``quantile``, ``histogram`` | Engine ``temp_spill_materialize`` or refuse — tier-C materialize |
+| ``transform.to_numpy`` | **Refuse** (use ``to_spill``) |
+| ``read_numpy`` | **No preflight** (slice or wire spill) |
 
 ---
 
@@ -383,7 +463,8 @@ mean, sum, min, max, count, numel, std, var, product,
 norm_l1, norm_l2, median, all_finite, any_nan, any_inf,
 arg_min, arg_max,
 nan_count, inf_count, null_count, nan_mean, nan_std,
-quantile, histogram, covariance, correlation, transform
+quantile, histogram, covariance, correlation,
+transform.to_numpy.*, transform.to_spill.*, transform.to_sidecar.*
 ```
 
 Plus: `execute`, `query`, `query_execute`, `plan_only`, `dataset`, `summary`, `info`.

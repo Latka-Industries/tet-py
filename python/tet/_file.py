@@ -12,6 +12,8 @@ from os import PathLike
 from pathlib import Path
 from typing import Any, Literal, cast, overload
 
+import numpy as np
+
 import tet._native as _native
 from tet._catalog import Dataset, axes_for_query, axes_wire, dataset_from_summary
 from tet._errors import (
@@ -22,6 +24,7 @@ from tet._errors import (
 from tet._native import TetError
 from tet._query import QueryResult, reduction_doc
 from tet._docstrings import _RAISE_FILE_QUERY, reduce_doc
+from tet._numpy import read_numpy_array
 from tet._query_doc import (
     build_query,
     correlation_op,
@@ -31,8 +34,8 @@ from tet._query_doc import (
     op_key_from_doc,
     quantile_op,
     selection_slices,
-    transform_op,
 )
+from tet._transform import TransformOps
 
 
 def _parse_json_response(raw: str) -> dict[str, Any]:
@@ -195,6 +198,40 @@ class TetFile:
     def __getitem__(self, key: str | int) -> Dataset:
         """``f[0]`` or ``f['temperature']`` → [`Dataset`]."""
         return self.dataset(key)
+
+    @property
+    def transform(self) -> TransformOps:
+        """Shape-preserving transforms (``f.transform.to_numpy.zscore(...)``, etc.)."""
+        return TransformOps(self)
+
+    def read_numpy(
+        self,
+        dataset: str,
+        selection: Sequence[Mapping[str, Any]] | None = None,
+    ) -> np.ndarray:
+        """Materialize a dataset selection into a ``numpy.ndarray``.
+
+        Parameters
+        ----------
+        dataset : str
+            Catalog dataset name.
+        selection : sequence of dict, optional
+            Per-axis slices (see :func:`~tet.selection_slices`). Omit for the full tensor.
+
+        Returns
+        -------
+        numpy.ndarray
+            Row-major array with shape matching the logical selection.
+
+        Raises
+        ------
+        TetError
+            Decode failures or unsupported dtype. Large selections are not
+            preflight-checked against ``memory_budget_bytes`` — slice the
+            selection or use transform ``to_spill`` / wire spill export when
+            RAM is tight (see ``docs/operations.md`` § Memory budget).
+        """
+        return read_numpy_array(self, dataset, selection=selection)
 
     def summary(self) -> dict[str, Any]:
         """Return the full catalog summary for this file.
@@ -960,60 +997,6 @@ class TetFile:
         out = self._execute_doc(
             doc, device=device, raw=raw, scalar_op="correlation"
         )
-        assert isinstance(out, (dict, QueryResult))
-        return out
-
-    def transform(
-        self,
-        dataset: str,
-        method: str,
-        axes: Sequence[int | str] | None = None,
-        *,
-        axis: int | str | None = None,
-        write: str | Mapping[str, Any] | None = "switch",
-        selection: Sequence[Mapping[str, Any]] | None = None,
-        device: str | None = None,
-        raw: bool = False,
-    ) -> QueryResult | dict[str, Any]:
-        f"""Shape-preserving transform (two-pass; pass-1 stats in ``execution``).
-
-        Parameters
-        ----------
-        dataset : str
-            Catalog dataset name.
-        method : str
-            One of ``zscore``, ``minmax``, ``l1``, ``l2``, ``center``, ``scale``,
-            ``log1p``, ``sqrt``, ``softmax``.
-        axes, axis : optional
-            Axes to fold per-cell stats; omit for one global stat set.
-        write : str or dict, default ``"switch"``
-            Output routing: ``"switch"`` (RAM or spill by budget), ``"ram"``, ``"spill"``,
-            or ``{{"target": "spill", "path": "out.bin"}}``.
-        selection, device, raw : optional
-            Same as :meth:`quantile`.
-
-        Returns
-        -------
-        QueryResult or dict
-            Pass-1 fold stats in ``.execution`` / ``.raw``; preview arrays when present.
-
-        Raises
-        ------
-        {_RAISE_FILE_QUERY}
-        ValueError
-            If ``method`` is not a known transform token.
-        """
-        ds = self.dataset(dataset)
-        doc = build_query(
-            dataset,
-            selection=selection,
-            transform=transform_op(
-                ds, method, axes, axis=axis, path=str(self.path)
-            ),
-        )
-        if write is not None:
-            doc["write"] = write
-        out = self._execute_doc(doc, device=device, raw=raw, scalar_op="transform")
         assert isinstance(out, (dict, QueryResult))
         return out
 

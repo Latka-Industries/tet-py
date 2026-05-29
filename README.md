@@ -90,7 +90,8 @@ tet-py/
 - [x] `Dataset`, `iter_datasets()`, `f[0]` / `f["name"]`, axis index or `dim_names`
 - [x] `UnknownDatasetError` / `UnknownAxisError`; optional `typing_stub()`
 - [x] mypy + `_native.pyi`
-- [ ] NumPy read (`read_numpy`) / write (`write_dataset`)
+- [x] NumPy read (`read_numpy`, `Dataset.to_numpy`, `transform.to_numpy`)
+- [ ] NumPy write (`write_dataset`)
 - [ ] Optional convert extras: `h5py`, `netCDF4`, `zarr`, `pandas`, `pyarrow`
 - [ ] Wheels on PyPI; pin `tetration = "x.y.z"` from crates.io for release builds
 

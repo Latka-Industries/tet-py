@@ -3,15 +3,18 @@
 //! Python sees `tet._native`: `open`, `TetFile`, `TetError`, `CatalogError`, `core_version`.
 //! Query documents are parsed/validated in Rust; responses are JSON strings for the pure-Python layer.
 
+mod numpy_export;
+
 use std::path::PathBuf;
 
 use pyo3::create_exception;
 use pyo3::exceptions::PyException;
 use pyo3::prelude::*;
+use pyo3::types::PyAny;
 use tetration::catalog::TetFile as CoreTetFile;
 use tetration::query::{
-    execute_query_document, parse_query_json, validate_query, ExecuteQueryOptions,
-    QueryDocument, TetError as QueryError,
+    execute_query_document, materialize_query_selection, materialize_query_transform_ram,
+    parse_query_json, validate_query, ExecuteQueryOptions, QueryDocument, TetError as QueryError,
 };
 
 create_exception!(_native, TetError, PyException, "Query parse, validation, or execution error.");
@@ -23,7 +26,7 @@ create_exception!(
 );
 
 /// Map a `tetration::query::TetError` to the appropriate Python exception.
-fn tet_err(err: QueryError) -> PyErr {
+pub(crate) fn tet_err(err: QueryError) -> PyErr {
     match err {
         QueryError::Catalog(catalog) => catalog_err(catalog),
         other => TetError::new_err(other.to_string()),
@@ -155,6 +158,35 @@ impl PyTetFile {
     /// Same as [`Self::query`].
     fn plan_only(&self, py: Python<'_>, query: &Bound<'_, PyAny>) -> PyResult<String> {
         self.execute_query_json(py, query, ExecuteQueryOptions::plan_only())
+    }
+
+    /// Materialize a selection-only query document into a `numpy.ndarray`.
+    ///
+    /// # Errors
+    ///
+    /// [`TetError`] on parse/validation/materialize failures; [`CatalogError`] when catalog-related.
+    fn read_numpy(&self, py: Python<'_>, query: &Bound<'_, PyAny>) -> PyResult<Py<PyAny>> {
+        let doc = parse_document(py, query)?;
+        let outcome =
+            materialize_query_selection(&doc, self.inner.mmap()).map_err(tet_err)?;
+        Ok(numpy_export::outcome_to_py(py, outcome)?.unbind())
+    }
+
+    /// Materialize a transform query (`write: ram`) into a `numpy.ndarray`.
+    ///
+    /// # Errors
+    ///
+    /// Same as [`Self::read_numpy`].
+    fn transform_to_numpy(&self, py: Python<'_>, query: &Bound<'_, PyAny>) -> PyResult<Py<PyAny>> {
+        let doc = parse_document(py, query)?;
+        let outcome = materialize_query_transform_ram(
+            &doc,
+            self.inner.mmap(),
+            self.inner.path(),
+            None,
+        )
+        .map_err(tet_err)?;
+        Ok(numpy_export::outcome_to_py(py, outcome)?.unbind())
     }
 }
 
