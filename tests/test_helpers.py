@@ -38,6 +38,11 @@ def test_sum_helper(sample_path: Path) -> None:
     assert abs(f.sum("temperature") - 21.0) < 1e-5
 
 
+def test_numel_matches_count(sample_path: Path) -> None:
+    f = tet.open(sample_path)
+    assert f.numel("temperature") == f.count("temperature")
+
+
 def test_open_expands_tilde(sample_path: Path) -> None:
     home = Path.home()
     if not str(sample_path).startswith(str(home)):

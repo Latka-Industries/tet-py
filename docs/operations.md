@@ -19,7 +19,7 @@ f = tet.open(path)
 
 ## Axis rules
 
-**Every list-style reduction** (`mean`, `sum`, `min`, `max`, `count`, `std`, `var`, `product`, `norm_l1`, `norm_l2`, `median`, `all_finite`, `any_nan`, `arg_min`, `arg_max`) uses the same `axis` / `axes` arguments. Examples below use `mean`; swap in `std`, `count`, etc. as needed.
+**Every list-style reduction** (`mean`, `sum`, `min`, `max`, `count`, `std`, `var`, `product`, `norm_l1`, `norm_l2`, `median`, `all_finite`, `any_nan`, `any_inf`, `arg_min`, `arg_max`, `nan_count`, `inf_count`, `null_count`, `nan_mean`, `nan_std`) uses the same `axis` / `axes` arguments. Examples below use `mean`; swap in `std`, `count`, etc. as needed.
 
 | Call                       | Effect                                                                   |
 | -------------------------- | ------------------------------------------------------------------------ |
@@ -87,7 +87,8 @@ Wire form: `"<op>": [<axis indices>]` — `[]` means reduce all axes.
 | `sum`        | `float`              | Sum                                                       |
 | `min`        | `float`              | Minimum                                                   |
 | `max`        | `float`              | Maximum                                                   |
-| `count`      | `int`                | Number of elements (see below — not `len` along one axis) |
+| `count`      | `int`                | Element count (wire op); see `numel` below                  |
+| `numel`      | `int`                | Same as `count` — Python alias (wire still `"count"`)     |
 | `std`        | `float`              | Population std, `ddof=0`; supports `axis` / `axes`        |
 | `var`        | `float`              | Population variance, `ddof=0`; supports `axis` / `axes`   |
 | `product`    | `float`              | Product of elements                                       |
@@ -120,20 +121,24 @@ f.execute({"dataset": "a", "max": [0]})   # reduce axis 0
 
 ### `count`, `std`, `var`, `product`
 
-#### `count` — element count, not axis length
+#### `count` / `numel` — element count, not axis length
 
-`count` is how many **values** are aggregated in the selection — like NumPy **`arr.size`**, not **`len(arr)`** (first-axis length only).
+`count` is the wire / CLI op name. **`numel`** is a Python alias with the same behavior (NumPy `size` semantics).
 
-| Call                   | Result (shape `(34, 64)`, full dataset)                                 |
-| ---------------------- | ----------------------------------------------------------------------- |
-| `f.count("a")`         | `2176` (= 34 × 64, all axes reduced)                                    |
-| `f.count("a", axis=0)` | length-`64` vector; each entry is `34` (elements combined along axis 0) |
+`count` / `numel` is how many **values** are aggregated in the selection — like NumPy **`arr.size`**, not **`len(arr)`** (first-axis length only).
 
-Counts **every** stored element (including NaN/inf). For “how many NaNs?” use wire op `nan_count` (not a `f.*` helper yet).
+| Call | Result (shape `(34, 64)`, full dataset) |
+| ---- | --------------------------------------- |
+| `f.numel("a")` or `f.count("a")` | `2176` (= 34 × 64, all axes reduced) |
+| `f.numel("a", axis=0)` | length-`64` vector; each entry is `34` (elements combined along axis 0) |
+
+Counts **every** stored element (including NaN/inf). For NaN / inf / fill-missing tallies use :meth:`~tet.TetFile.nan_count`, :meth:`~tet.TetFile.inf_count`, and :meth:`~tet.TetFile.null_count`.
 
 ```python
-n = f.count("a")                      # total elements in selection
-n = f.count("a", axis=0)              # partial → QueryResult.reduced
+n = f.numel("a")                      # total elements in selection
+n = f.numel("a", axis=0)              # partial → QueryResult.reduced
+
+build_query("a", count=[])            # wire name is still "count"
 ```
 
 #### `std` and `var` — same axes as `mean`
@@ -252,6 +257,53 @@ f.execute({"dataset": "temperature", "correlation": {"axis": 1}})
 
 ---
 
+## QC counts and NaN-skipping stats
+
+Wire form matches list-style reductions unless noted.
+
+| Method       | Result (full reduce) | Notes                                      |
+| ------------ | -------------------- | ------------------------------------------ |
+| `nan_count`  | `int` / `float`      | Count of NaN elements                      |
+| `inf_count`  | `int` / `float`      | Count of ±infinity elements                |
+| `null_count` | `int` / `float`      | Fill-missing count; optional `fill=`       |
+| `any_inf`    | `bool`               | True when any ±infinity present            |
+| `nan_mean`   | `float`              | Mean skipping NaNs (same axes as `mean`)   |
+| `nan_std`    | `float`              | Population std skipping NaNs (`ddof=0`)    |
+
+```python
+f.nan_count("a")
+f.inf_count("a")
+f.null_count("a")                     # fill from footer attrs when present
+f.null_count("a", fill=99.0)
+
+f.any_inf("a")
+f.nan_mean("a")
+f.nan_std("a", axis=0)
+```
+
+On clean finite data, `nan_mean` / `nan_std` match `mean` / `std`.
+
+---
+
+## `transform`
+
+Wire: `"transform": { "method": …, optional "axis" / "axes" }` plus top-level `"write"`.
+
+Methods: `zscore`, `minmax`, `l1`, `l2`, `center`, `scale`, `log1p`, `sqrt`, `softmax`.
+
+```python
+r = f.transform("a", "zscore")          # write="switch" by default
+r.execution["operation_mean"]           # pass-1 fold stats
+r.execution.get("f32_preview")          # transformed preview when present
+
+f.transform("a", "center", axis=0, write="ram")
+f.transform("a", "softmax", write={"target": "spill", "path": "/tmp/out.bin"})
+```
+
+Returns :class:`~tet.QueryResult` (or wire ``dict`` when ``raw=True``); not a single scalar.
+
+---
+
 ## Selection and `build_query`
 
 Slice one dimension with [`axis_slice`](../python/tet/_query_doc.py) (`start` inclusive, `stop` exclusive):
@@ -327,9 +379,11 @@ stub = tet.typing_stub(path)            # or f.typing_stub() on an open file
 ## Quick reference: all `TetFile` op methods
 
 ```text
-mean, sum, min, max, count, std, var, product,
-norm_l1, norm_l2, median, all_finite, any_nan, arg_min, arg_max,
-quantile, histogram, covariance, correlation
+mean, sum, min, max, count, numel, std, var, product,
+norm_l1, norm_l2, median, all_finite, any_nan, any_inf,
+arg_min, arg_max,
+nan_count, inf_count, null_count, nan_mean, nan_std,
+quantile, histogram, covariance, correlation, transform
 ```
 
 Plus: `execute`, `query`, `query_execute`, `plan_only`, `dataset`, `summary`, `info`.

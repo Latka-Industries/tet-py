@@ -13,7 +13,11 @@ from tet._query import REDUCTION_OPS, reduction_doc
 
 # Single-op keys accepted on the query document wire (subset; see tetration query_engine.md).
 QUERY_OP_KEYS: frozenset[str] = frozenset(REDUCTION_OPS) | frozenset(
-    ("quantile", "histogram", "covariance", "correlation")
+    ("quantile", "histogram", "covariance", "correlation", "transform")
+)
+
+TRANSFORM_METHODS: frozenset[str] = frozenset(
+    ("zscore", "minmax", "l1", "l2", "center", "scale", "log1p", "sqrt", "softmax")
 )
 
 _QUERY_DOC_META = frozenset(
@@ -195,6 +199,46 @@ def correlation_op(
     if not fields:
         raise ValueError("correlation requires axis=")
     return fields
+
+
+def null_count_op(
+    dataset: Dataset,
+    axes: Sequence[int | str] | None = None,
+    *,
+    axis: int | str | None = None,
+    fill: float | None = None,
+    path: str | None = None,
+) -> list[int | str] | dict[str, Any]:
+    """Body for ``"null_count": []`` or ``{ "fill": …, "axis": … }``."""
+    if axis is not None and axes is not None:
+        raise TypeError("pass only one of axes= or axis=")
+    merged = axes_for_query(axes if axis is None else [axis])
+    if fill is None and not merged:
+        return []
+    body: dict[str, Any] = {}
+    if fill is not None:
+        body["fill"] = fill
+    body.update(wire_axis_fields(dataset, merged, path=path))
+    return body
+
+
+def transform_op(
+    dataset: Dataset,
+    method: str,
+    axes: Sequence[int | str] | None = None,
+    *,
+    axis: int | str | None = None,
+    path: str | None = None,
+) -> dict[str, Any]:
+    """Body for ``"transform": { "method": …, optional "axis" / "axes" }``."""
+    if method not in TRANSFORM_METHODS:
+        raise ValueError(
+            f"unknown transform method {method!r} "
+            f"(expected one of {sorted(TRANSFORM_METHODS)})"
+        )
+    body: dict[str, Any] = {"method": method}
+    body.update(wire_axis_fields(dataset, axes, axis=axis, path=path))
+    return body
 
 
 def op_key_from_doc(doc: dict[str, Any]) -> str | None:

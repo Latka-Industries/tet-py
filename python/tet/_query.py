@@ -39,6 +39,9 @@ _REDUCTION_WIRE_KEYS = (
     "nan_count",
     "inf_count",
     "null_count",
+    "nan_mean",
+    "nan_std",
+    "any_inf",
 )
 
 # Public map used by tests and advanced callers.

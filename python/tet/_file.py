@@ -27,9 +27,11 @@ from tet._query_doc import (
     correlation_op,
     covariance_op,
     histogram_op,
+    null_count_op,
     op_key_from_doc,
     quantile_op,
     selection_slices,
+    transform_op,
 )
 
 
@@ -416,7 +418,7 @@ class TetFile:
         assert isinstance(result, QueryResult)
         if scalar_op and result.scalar is not None:
             return result.scalar
-        if scalar_op in ("histogram", "covariance", "correlation"):
+        if scalar_op in ("histogram", "covariance", "correlation", "transform"):
             return result
         if scalar_op and result.reduced is not None:
             return result
@@ -506,6 +508,36 @@ class TetFile:
     ) -> float | int | dict[str, Any] | QueryResult:
         """Element count over `dataset`."""
         return self._reduce("count", dataset, axes, axis=axis, device=device, raw=raw)
+
+    def numel(
+        self,
+        dataset: str,
+        axes: Sequence[int | str] | None = None,
+        *,
+        axis: int | str | None = None,
+        device: str | None = None,
+        raw: bool = False,
+    ) -> float | int | dict[str, Any] | QueryResult:
+        f"""Number of elements (NumPy ``size`` semantics).
+
+        Calls :meth:`count` internally — wire query op is ``"count"``, not ``numel``.
+        Python name only; CLI / :func:`build_query` still use ``count=[]``.
+
+        Parameters
+        ----------
+        dataset, axes, axis, device, raw
+            Same as :meth:`count`.
+
+        Returns
+        -------
+        float, int, QueryResult, or dict
+            Same as :meth:`count`.
+
+        Raises
+        ------
+        {_RAISE_FILE_QUERY}
+        """
+        return self.count(dataset, axes, axis=axis, device=device, raw=raw)
 
     def std(
         self,
@@ -639,6 +671,122 @@ class TetFile:
         return cast(
             int,
             self._reduce("arg_max", dataset, axes, axis=axis, device=device, raw=raw),
+        )
+
+    def any_inf(
+        self,
+        dataset: str,
+        axes: Sequence[int | str] | None = None,
+        *,
+        axis: int | str | None = None,
+        device: str | None = None,
+        raw: bool = False,
+    ) -> bool | dict[str, Any] | QueryResult:
+        """True if any selected element is ±infinity."""
+        return cast(
+            bool,
+            self._reduce("any_inf", dataset, axes, axis=axis, device=device, raw=raw),
+        )
+
+    def nan_count(
+        self,
+        dataset: str,
+        axes: Sequence[int | str] | None = None,
+        *,
+        axis: int | str | None = None,
+        device: str | None = None,
+        raw: bool = False,
+    ) -> int | float | dict[str, Any] | QueryResult:
+        """Count of NaN elements in the selection."""
+        return cast(
+            int | float,
+            self._reduce(
+                "nan_count", dataset, axes, axis=axis, device=device, raw=raw
+            ),
+        )
+
+    def inf_count(
+        self,
+        dataset: str,
+        axes: Sequence[int | str] | None = None,
+        *,
+        axis: int | str | None = None,
+        device: str | None = None,
+        raw: bool = False,
+    ) -> int | float | dict[str, Any] | QueryResult:
+        """Count of ±infinity elements in the selection."""
+        return cast(
+            int | float,
+            self._reduce(
+                "inf_count", dataset, axes, axis=axis, device=device, raw=raw
+            ),
+        )
+
+    def null_count(
+        self,
+        dataset: str,
+        axes: Sequence[int | str] | None = None,
+        *,
+        axis: int | str | None = None,
+        fill: float | None = None,
+        device: str | None = None,
+        raw: bool = False,
+    ) -> int | float | dict[str, Any] | QueryResult:
+        f"""Count of fill-missing values (``_FillValue`` / attrs when ``fill`` omitted).
+
+        Parameters
+        ----------
+        dataset : str
+            Catalog dataset name.
+        axes, axis : optional
+            Same as :meth:`mean`.
+        fill : float, optional
+            Explicit fill value; otherwise resolved from dataset footer attrs.
+        device, raw : optional
+            Same as :meth:`mean`.
+
+        Returns
+        -------
+        int, float, QueryResult, or dict
+            Element count when fully reduced and ``raw=False``; else :class:`~tet.QueryResult`.
+
+        Raises
+        ------
+        {_RAISE_FILE_QUERY}
+        """
+        ds = self.dataset(dataset)
+        wire = null_count_op(ds, axes, axis=axis, fill=fill, path=str(self.path))
+        doc = build_query(dataset, null_count=wire)
+        out = self._execute_doc(doc, device=device, raw=raw, scalar_op="null_count")
+        assert isinstance(out, (int, float, dict, QueryResult))
+        return out
+
+    def nan_mean(
+        self,
+        dataset: str,
+        axes: Sequence[int | str] | None = None,
+        *,
+        axis: int | str | None = None,
+        device: str | None = None,
+        raw: bool = False,
+    ) -> float | dict[str, Any] | QueryResult:
+        """Mean over finite elements (NaN-skipping)."""
+        return self._reduce(
+            "nan_mean", dataset, axes, axis=axis, device=device, raw=raw
+        )
+
+    def nan_std(
+        self,
+        dataset: str,
+        axes: Sequence[int | str] | None = None,
+        *,
+        axis: int | str | None = None,
+        device: str | None = None,
+        raw: bool = False,
+    ) -> float | dict[str, Any] | QueryResult:
+        """Population std over finite elements (NaN-skipping, ddof=0)."""
+        return self._reduce(
+            "nan_std", dataset, axes, axis=axis, device=device, raw=raw
         )
 
     def quantile(
@@ -815,6 +963,60 @@ class TetFile:
         assert isinstance(out, (dict, QueryResult))
         return out
 
+    def transform(
+        self,
+        dataset: str,
+        method: str,
+        axes: Sequence[int | str] | None = None,
+        *,
+        axis: int | str | None = None,
+        write: str | Mapping[str, Any] | None = "switch",
+        selection: Sequence[Mapping[str, Any]] | None = None,
+        device: str | None = None,
+        raw: bool = False,
+    ) -> QueryResult | dict[str, Any]:
+        f"""Shape-preserving transform (two-pass; pass-1 stats in ``execution``).
+
+        Parameters
+        ----------
+        dataset : str
+            Catalog dataset name.
+        method : str
+            One of ``zscore``, ``minmax``, ``l1``, ``l2``, ``center``, ``scale``,
+            ``log1p``, ``sqrt``, ``softmax``.
+        axes, axis : optional
+            Axes to fold per-cell stats; omit for one global stat set.
+        write : str or dict, default ``"switch"``
+            Output routing: ``"switch"`` (RAM or spill by budget), ``"ram"``, ``"spill"``,
+            or ``{{"target": "spill", "path": "out.bin"}}``.
+        selection, device, raw : optional
+            Same as :meth:`quantile`.
+
+        Returns
+        -------
+        QueryResult or dict
+            Pass-1 fold stats in ``.execution`` / ``.raw``; preview arrays when present.
+
+        Raises
+        ------
+        {_RAISE_FILE_QUERY}
+        ValueError
+            If ``method`` is not a known transform token.
+        """
+        ds = self.dataset(dataset)
+        doc = build_query(
+            dataset,
+            selection=selection,
+            transform=transform_op(
+                ds, method, axes, axis=axis, path=str(self.path)
+            ),
+        )
+        if write is not None:
+            doc["write"] = write
+        out = self._execute_doc(doc, device=device, raw=raw, scalar_op="transform")
+        assert isinstance(out, (dict, QueryResult))
+        return out
+
 
 _REDUCE_METHODS: dict[str, str] = {
     "mean": "Arithmetic mean.",
@@ -830,6 +1032,12 @@ _REDUCE_METHODS: dict[str, str] = {
     "median": "Median (materializes full selection).",
     "all_finite": "Whether all elements are finite.",
     "any_nan": "Whether any element is NaN.",
+    "any_inf": "Whether any element is ±infinity.",
+    "nan_count": "Count of NaN elements.",
+    "inf_count": "Count of ±infinity elements.",
+    "null_count": "Count of fill-missing values.",
+    "nan_mean": "Mean over finite elements (NaN-skipping).",
+    "nan_std": "Population std over finite elements (NaN-skipping, ddof=0).",
     "arg_min": "Flat index of minimum (all axes reduced).",
     "arg_max": "Flat index of maximum (all axes reduced).",
 }

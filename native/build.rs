@@ -10,7 +10,7 @@ fn main() {
         })
     } else {
         // crates.io-only build: keep in sync with Cargo.toml `[dependencies.tetration].version`
-        "0.1.6".to_owned()
+        "0.1.8".to_owned()
     };
     println!("cargo:rustc-env=TETRATION_VERSION={version}");
 }
