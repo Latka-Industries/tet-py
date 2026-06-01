@@ -518,3 +518,15 @@ read_numpy
 Write: `tet.TetWriter`, `tet.write_dataset`.
 
 Plus: `execute`, `query`, `query_execute`, `plan_only`, `dataset`, `summary`, `info`.
+
+---
+
+## Planned improvements (tracking)
+
+| Topic | Issue |
+| ----- | ----- |
+| `read_numpy` memory budget preflight | [tet-py#9](https://github.com/Latka-Industries/tet-py/issues/9), [tetration#19](https://github.com/Latka-Industries/tetration/issues/19) |
+| `write_dataset` integer dtypes | [tet-py#8](https://github.com/Latka-Industries/tet-py/issues/8) |
+| `f16` / `u32` / `u64` read export | [tetration#20](https://github.com/Latka-Industries/tetration/issues/20) |
+| Preview ndarray API | [tet-py#7](https://github.com/Latka-Industries/tet-py/issues/7) |
+| Full index | [HANDOFF.md — GitHub tracking](HANDOFF.md#github-tracking-tet-py) |

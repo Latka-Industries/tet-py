@@ -3,7 +3,7 @@
 | Doc                                | Contents                                                      |
 | ---------------------------------- | ------------------------------------------------------------- |
 | [**operations.md**](operations.md) | Query operations (`mean`, `min`, `quantile`, …) with examples |
-| [**HANDOFF.md**](HANDOFF.md)       | Phases, dev commands, agent notes                             |
+| [**HANDOFF.md**](HANDOFF.md)       | Phases, dev commands, agent notes, [GitHub issue tracking](HANDOFF.md#github-tracking-tet-py) |
 
 External references:
 

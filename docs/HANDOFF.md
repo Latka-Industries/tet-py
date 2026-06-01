@@ -1,6 +1,6 @@
 # tet-py — handoff, phases, and outlook
 
-Agent/onboarding doc for **`~/Code/tet-py`**. Parent project: **[tetration](https://github.com/thicclatka/tetration)** (Rust crate + `tet` CLI). Phase 11 in main repo: [`GETTING_STARTED.md#phase-11`](https://github.com/thicclatka/tetration/blob/main/GETTING_STARTED.md#phase-11--bindings-python--c-abi).
+Agent/onboarding doc for **`~/Code/tet-py`**. Parent project: **[tetration](https://github.com/Latka-Industries/tetration)** (Rust crate + `tet` CLI). Python bindings: this repo; C ABI / Phase 11: [`tetration/docs/ffi.md`](https://github.com/Latka-Industries/tetration/blob/main/docs/ffi.md).
 
 ## Naming (decided)
 
@@ -26,10 +26,24 @@ Agent/onboarding doc for **`~/Code/tet-py`**. Parent project: **[tetration](http
 
 ### Not done\*\*
 
-- No PyPI publish; git remote on **Latka-Industries/tet-py** (private)
-- NumPy **read** + transform `to_numpy` shipped; **write** (`write_dataset`) and convert extras not yet
-- `query()` returns **`dict`** (parsed `QueryResponse` JSON)
-- No `TetFile.open` classmethod (use `tet.open` only)
+- No PyPI publish; git remote on **Latka-Industries/tet-py** (private) — track [#5](https://github.com/Latka-Industries/tet-py/issues/5)
+- Phase 3 **convert** extras (`tet.convert`) not started — [#10](https://github.com/Latka-Industries/tet-py/issues/10)
+- CI still checks out sibling **tetration** — [#6](https://github.com/Latka-Industries/tet-py/issues/6)
+
+## GitHub tracking (tet-py)
+
+| Issue | Topic |
+| ----- | ----- |
+| [#4](https://github.com/Latka-Industries/tet-py/issues/4) | Docs hygiene (this file + README) |
+| [#5](https://github.com/Latka-Industries/tet-py/issues/5) | PyPI + cross-platform wheels (Phase 4) |
+| [#6](https://github.com/Latka-Industries/tet-py/issues/6) | CI fixtures without sibling checkout |
+| [#7](https://github.com/Latka-Industries/tet-py/issues/7) | Preview ndarray from `query_execute` |
+| [#8](https://github.com/Latka-Industries/tet-py/issues/8) | `write_dataset` integer dtypes |
+| [#9](https://github.com/Latka-Industries/tet-py/issues/9) | `read_numpy` memory budget preflight |
+| [#10](https://github.com/Latka-Industries/tet-py/issues/10) | `tet.convert` (Phase 3) |
+| [#11](https://github.com/Latka-Industries/tet-py/issues/11) | Zero-copy mmap → NumPy (P2) |
+
+**tetration (upstream):** [#18](https://github.com/Latka-Industries/tetration/issues/18) docs link to tet-py · [#19](https://github.com/Latka-Industries/tetration/issues/19) selection preflight · [#20](https://github.com/Latka-Industries/tetration/issues/20) f16/u32/u64 export · [#21](https://github.com/Latka-Industries/tetration/issues/21) crates.io 0.1.9+ for wheels.
 
 ## Dev commands (uv)
 
@@ -51,7 +65,7 @@ Layout: `python/tet/` = facade; `native/src/lib.rs` = PyO3; tests expect sibling
 
 - [x] Push to `github.com/Latka-Industries/tet-py`
 - [x] CI: `.github/workflows/ci.yml` (checkout sibling **tetration**, `uv sync` → `maturin develop` → `pytest`)
-- [ ] Register **`tet-py`** on PyPI (empty/meta release optional) to hold the name
+- [ ] Register **`tet-py`** on PyPI (empty/meta release optional) to hold the name — [#5](https://github.com/Latka-Industries/tet-py/issues/5)
 - [x] `LICENSE-MIT` + `LICENSE-APACHE` (dual license, match tetration)
 - [x] README links tetration Phase 11, query fixtures, query_engine docs
 
@@ -80,9 +94,11 @@ Goal: make **NumPy** the primary Python array surface for `.tet` (read and write
 - [x] `read_numpy(dataset, selection=...)` (or `Dataset.to_numpy()`) → `numpy.ndarray` with catalog shape / dtype
 - [x] `transform.to_numpy.*` → full transformed `numpy.ndarray` (wire `write: ram`; budget preflight)
 - [x] PyO3 wrapper over `materialize_read_plan_*` / `materialize_query_transform_ram`; copy into NumPy (v1)
-- [ ] Optional: `query_execute(..., preview=N)` → `ndarray` for capped `execution.*_preview` samples
+- [ ] Optional: `query_execute(..., preview=N)` → `ndarray` for capped `execution.*_preview` samples — [#7](https://github.com/Latka-Industries/tet-py/issues/7)
 - [x] Document RAM budget: `to_numpy` vs `to_spill`, `read_numpy` slice/spill notes ([`operations.md`](operations.md#memory-budget))
-- [ ] Defer zero-copy mmap → NumPy until copy path is stable (P2 nice-to-have)
+- [ ] `read_numpy` budget preflight (blocked on [tetration#19](https://github.com/Latka-Industries/tetration/issues/19)) — [#9](https://github.com/Latka-Industries/tet-py/issues/9)
+- [ ] Integer `write_dataset` dtypes beyond f32/f64 — [#8](https://github.com/Latka-Industries/tet-py/issues/8)
+- [ ] Defer zero-copy mmap → NumPy until copy path is stable (P2) — [#11](https://github.com/Latka-Industries/tet-py/issues/11)
 
 **Write (NumPy → `.tet`)** — no Rust HDF5/NetCDF in wheels.
 
@@ -110,16 +126,16 @@ Optional extras in `pyproject.toml`:
 | `parquet` | pyarrow          | Table → tensor rules          |
 | `npy`     | numpy            | Smoke / trivial path          |
 
-- [ ] `tet.convert(src, dst.tet, ...)` orchestration
+- [ ] `tet.convert(src, dst.tet, ...)` orchestration — [#10](https://github.com/Latka-Industries/tet-py/issues/10) (formats: [tetration#17](https://github.com/Latka-Industries/tetration/issues/17))
 - [ ] Defer **sparse MTX** unless explicit densify + size limits
 
 Rust CLI **`tet convert`** remains the fast path for HDF5/NetCDF/Zarr on machines with native libs.
 
 ### Phase 4 — Release engineering (P1)
 
-- [ ] Release: pin `tetration = "x.y.z"` from crates.io; remove `path = "../tetration"` in published `Cargo.toml` (or maturin/source dist policy)
-- [ ] Linux / macOS / Windows wheels via maturin-action
-- [ ] Version policy: `tet-py` version tracks compatible `tetration` minor (document in README)
+- [ ] Release: pin `tetration = "x.y.z"` from crates.io; remove `path = "../tetration"` in published `Cargo.toml` — [#5](https://github.com/Latka-Industries/tet-py/issues/5), [tetration#21](https://github.com/Latka-Industries/tetration/issues/21)
+- [ ] Linux / macOS / Windows wheels via maturin-action — [#5](https://github.com/Latka-Industries/tet-py/issues/5)
+- [ ] Version policy: `tet-py` version tracks compatible `tetration` minor (document in README) — [#5](https://github.com/Latka-Industries/tet-py/issues/5)
 - [x] Plan: `numpy` dependency when Phase 2 read/write APIs land (see Phase 2)
 
 ### Phase 5 — Nice-to-have (P2)
@@ -128,7 +144,7 @@ Rust CLI **`tet convert`** remains the fast path for HDF5/NetCDF/Zarr on machine
 - [x] `tet.TetFile.open` classmethod
 - [ ] Submodule `tet.convert`, `tet.query` for large API surface
 - [ ] Jupyter / xarray accessor sketch (`ds.tet.write(...)` out of scope unless requested)
-- [ ] Shared fixtures: git submodule `tetration` or vendor `fixtures/small/` for CI without sibling path
+- [ ] Shared fixtures: git submodule `tetration` or vendor `fixtures/small/` for CI without sibling path — [#6](https://github.com/Latka-Industries/tet-py/issues/6)
 
 ---
 
@@ -163,11 +179,11 @@ User code  →  import tet  →  python/tet/__init__.py
 
 ## Open questions for maintainers
 
-1. Pin **one** Python (3.11 vs 3.13) for CI wheels?
-2. Submodule **tetration** vs path sibling for CI?
-3. Publish **0.1.0** before NumPy interchange, or after Phase 2 read smoke?
-4. **NumPy read before write**, or both in one Phase 2 PR series?
-5. Exception hierarchy depth vs plain `RuntimeError` from PyO3 today?
+1. Pin **one** Python (3.11 vs 3.13) for release wheels? (CI already matrix-tests 3.11+)
+2. Submodule **tetration** vs path sibling vs vendored fixtures — [#6](https://github.com/Latka-Industries/tet-py/issues/6)
+3. Exception hierarchy depth vs plain `RuntimeError` from PyO3 today?
+
+Resolved: Phase 2 read+write shipped; PyPI timing tracked in [#5](https://github.com/Latka-Industries/tet-py/issues/5).
 
 ---
 
@@ -181,4 +197,4 @@ User code  →  import tet  →  python/tet/__init__.py
 | `tests/test_smoke.py`    | `sample.tet` mean query                               |
 | `README.md`              | User-facing quick start                               |
 
-When behavior changes, update **README.md** and this file; link Phase 11 checklist in **tetration** `GETTING_STARTED.md` when milestones complete.
+When behavior changes, update **README.md** and this file; keep **GitHub tracking** issue links in sync. Cross-repo docs: [tetration#18](https://github.com/Latka-Industries/tetration/issues/18).

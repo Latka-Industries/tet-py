@@ -12,7 +12,7 @@ Python bindings for [**Tetration**](https://github.com/Latka-Industries/tetratio
 | Rust core | [`tetration`](https://crates.io/crates/tetration) on crates.io |
 | CLI (no Python) | [`tet`](https://github.com/Latka-Industries/tetration) binary from the main repo |
 
-**Status:** read/query API with catalog access, reduction helpers, selection builders, and file-specific errors. NumPy read/write and convert extras are planned ([Phase 11](https://github.com/Latka-Industries/tetration/blob/main/GETTING_STARTED.md#phase-11--bindings-python--c-abi)).
+**Status:** read/query API, NumPy read/write (`read_numpy`, `TetWriter`, `write_dataset`). Convert extras and PyPI wheels are next — see [docs/HANDOFF.md](docs/HANDOFF.md#github-tracking-tet-py) for issue tracking.
 
 Do not `pip install tetration` — that PyPI name is an unrelated math package. Use **`tet-py`** / **`import tet`**.
 
@@ -92,8 +92,8 @@ tet-py/
 - [x] mypy + `_native.pyi`
 - [x] NumPy read (`read_numpy`, `Dataset.to_numpy`, `transform.to_numpy`)
 - [x] NumPy write (`TetWriter`, `write_dataset`)
-- [ ] Optional convert extras: `h5py`, `netCDF4`, `zarr`, `pandas`, `pyarrow`
-- [ ] Wheels on PyPI; pin `tetration = "x.y.z"` from crates.io for release builds
+- [ ] Optional convert extras: `h5py`, `netCDF4`, `zarr`, `pandas`, `pyarrow` — [#10](https://github.com/Latka-Industries/tet-py/issues/10)
+- [ ] Wheels on PyPI; pin `tetration = "x.y.z"` from crates.io for release builds — [#5](https://github.com/Latka-Industries/tet-py/issues/5)
 
 ## Related
 
