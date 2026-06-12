@@ -73,7 +73,7 @@ Layout: `python/tet/` subpackages (`_core`, `_query`, `_io`, `_transform`); `nat
 
 - [x] Push to `github.com/Latka-Industries/tet-py`
 - [x] CI: `.github/workflows/ci.yml` (checkout sibling **tetration**, `uv sync` → `maturin develop` → `pytest`)
-- [x] **`tet-py`** on [PyPI](https://pypi.org/project/tet-py/) (0.1.0)
+- [x] **`tet-py`** on [PyPI](https://pypi.org/project/tet-py/) (0.1.0 shipped; 0.1.1 tag pending)
 - [x] `LICENSE-MIT` + `LICENSE-APACHE` (dual license, match tetration)
 - [x] README links tetration Phase 11, query fixtures, query_engine docs
 
