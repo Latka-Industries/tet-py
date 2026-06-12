@@ -1,5 +1,6 @@
 //! Emit `TETRATION_VERSION` from the sibling `tetration` checkout (path dependency).
 
+/// Read sibling `tetration/Cargo.toml` version for `env!("TETRATION_VERSION")`, or pin for crates.io builds.
 fn main() {
     let manifest = std::path::Path::new("../../tetration/Cargo.toml");
     let version = if manifest.exists() {
@@ -9,11 +10,12 @@ fn main() {
         })
     } else {
         // crates.io-only build: keep in sync with Cargo.toml `[dependencies.tetration].version`
-        "0.1.6".to_owned()
+        "0.1.8".to_owned()
     };
     println!("cargo:rustc-env=TETRATION_VERSION={version}");
 }
 
+/// Extract `[package].version` from a `Cargo.toml` string (first `[package]` section only).
 fn parse_package_version(cargo_toml: &str) -> Option<String> {
     let mut in_package = false;
     for line in cargo_toml.lines() {

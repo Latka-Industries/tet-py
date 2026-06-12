@@ -13,6 +13,10 @@ crate-type = ["cdylib"]
 
 [dependencies]
 pyo3 = { version = "0.28.3", features = ["extension-module"] }
+numpy = "0.28.0"
 serde_json = "1.0"
 # Local dev: ../../tetration (sibling of repo root). Release: crates.io pin, drop `path`.
-tetration = { version = "0.1.6", path = "../../tetration", default-features = false }
+tetration = { version = "0.1.9", default-features = false }
+
+[patch.crates-io]
+tetration = { path = "../../tetration" }

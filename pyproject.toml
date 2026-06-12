@@ -23,10 +23,10 @@ classifiers = [
     "Programming Language :: Rust",
     "Topic :: Scientific/Engineering",
 ]
-dependencies = []
+dependencies = ["numpy>=2.0"]
 
 [project.optional-dependencies]
-dev = ["pytest>=8.0", "maturin>=1.7", "mypy>=1.13"]
+dev = ["pytest>=8.0", "maturin>=1.7", "mypy>=1.13", "numpy>=2.0"]
 
 [project.urls]
 Homepage = "https://github.com/Latka-Industries/tet-py"

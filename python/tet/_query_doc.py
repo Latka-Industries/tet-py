@@ -1,4 +1,7 @@
-"""Build query documents: selection slices and wire op shapes."""
+"""Construct query JSON documents (selection + one operation).
+
+Wire shape matches the ``tet query`` CLI; see tetration ``docs/query_engine.md``.
+"""
 
 from __future__ import annotations
 
@@ -10,7 +13,11 @@ from tet._query import REDUCTION_OPS, reduction_doc
 
 # Single-op keys accepted on the query document wire (subset; see tetration query_engine.md).
 QUERY_OP_KEYS: frozenset[str] = frozenset(REDUCTION_OPS) | frozenset(
-    ("quantile", "histogram", "covariance", "correlation")
+    ("quantile", "histogram", "covariance", "correlation", "transform")
+)
+
+TRANSFORM_METHODS: frozenset[str] = frozenset(
+    ("zscore", "minmax", "l1", "l2", "center", "scale", "log1p", "sqrt", "softmax")
 )
 
 _QUERY_DOC_META = frozenset(
@@ -26,7 +33,20 @@ def axis_slice(
     start_label: str | None = None,
     stop_label: str | None = None,
 ) -> dict[str, Any]:
-    """One per-axis half-open slice for ``selection`` (``start`` inclusive, ``stop`` exclusive)."""
+    """Build one per-axis slice dict for a query ``selection`` array.
+
+    Parameters
+    ----------
+    start, stop, step : int, optional
+        Half-open interval ``[start, stop)`` on this axis; ``step`` defaults to 1 in the engine.
+    start_label, stop_label : str, optional
+        Coordinate labels resolved at plan time when footer coords exist.
+
+    Returns
+    -------
+    dict
+        Slice object for one dimension (omit keys for “full extent” on that axis).
+    """
     out: dict[str, Any] = {}
     if start is not None:
         out["start"] = start
@@ -42,7 +62,18 @@ def axis_slice(
 
 
 def selection_slices(*slices: Mapping[str, Any]) -> list[dict[str, Any]]:
-    """Build a ``selection`` array (one slice dict per dimension, in order)."""
+    """Build a ``selection`` array for a query document.
+
+    Parameters
+    ----------
+    *slices : mapping
+        One slice dict per dimension (use :func:`axis_slice`); order is axis 0, 1, …
+
+    Returns
+    -------
+    list[dict]
+        Wire ``selection`` list passed to :func:`build_query`.
+    """
     return [dict(s) for s in slices]
 
 
@@ -70,19 +101,57 @@ def wire_axis_fields(
     return {"axes": wire}
 
 
+def build_selection_query(
+    dataset: str,
+    *,
+    selection: Sequence[Mapping[str, Any]] | None = None,
+) -> dict[str, Any]:
+    """Build a selection-only query document (materialize / ``read_numpy``).
+
+    Parameters
+    ----------
+    dataset : str
+        Target dataset name.
+    selection : sequence of mapping, optional
+        Per-axis slices; omit for the full tensor.
+
+    Returns
+    -------
+    dict
+        Wire document with ``"dataset"`` and optional ``"selection"`` only.
+    """
+    doc: dict[str, Any] = {"dataset": dataset}
+    if selection is not None:
+        doc["selection"] = [dict(s) for s in selection]
+    return doc
+
+
 def build_query(
     dataset: str,
     *,
     selection: Sequence[Mapping[str, Any]] | None = None,
     **op: Any,
 ) -> dict[str, Any]:
-    """Build a one-op query document.
+    """Build a one-operation query document.
 
-    List ops: ``build_query("a", mean=[])`` or ``build_query("a", mean=[0])``.
+    Parameters
+    ----------
+    dataset : str
+        Target dataset name (not validated until execute).
+    selection : sequence of mapping, optional
+        Per-axis slices; see :func:`selection_slices`.
+    **op
+        Exactly one operation keyword argument, e.g. ``mean=[]``, ``quantile={...}``.
 
-    Object ops: ``build_query("a", quantile={"q": 0.5, "axis": 0})``.
+    Returns
+    -------
+    dict
+        Wire document with ``"dataset"``, optional ``"selection"``, and one op key.
 
-    With selection: ``build_query("a", selection=selection_slices(...), sum=[])``.
+    Raises
+    ------
+    ValueError
+        If zero or more than one op keyword is passed, or op name is unknown.
     """
     if len(op) != 1:
         raise ValueError("exactly one operation key required")
@@ -103,6 +172,7 @@ def quantile_op(
     axis: int | str | None = None,
     path: str | None = None,
 ) -> dict[str, Any]:
+    """Body for ``"quantile": { "q": …, "axis": … }``."""
     body: dict[str, Any] = {"q": q}
     body.update(wire_axis_fields(dataset, axes, axis=axis, path=path))
     return body
@@ -118,6 +188,7 @@ def histogram_op(
     max: float | None = None,
     path: str | None = None,
 ) -> dict[str, Any]:
+    """Body for ``"histogram": { "bins": …, optional "min"/"max", "axis": … }``."""
     body: dict[str, Any] = {"bins": bins}
     body.update(wire_axis_fields(dataset, axes, axis=axis, path=path))
     if min is not None:
@@ -155,8 +226,48 @@ def correlation_op(
     return fields
 
 
+def null_count_op(
+    dataset: Dataset,
+    axes: Sequence[int | str] | None = None,
+    *,
+    axis: int | str | None = None,
+    fill: float | None = None,
+    path: str | None = None,
+) -> list[int | str] | dict[str, Any]:
+    """Body for ``"null_count": []`` or ``{ "fill": …, "axis": … }``."""
+    if axis is not None and axes is not None:
+        raise TypeError("pass only one of axes= or axis=")
+    merged = axes_for_query(axes if axis is None else [axis])
+    if fill is None and not merged:
+        return []
+    body: dict[str, Any] = {}
+    if fill is not None:
+        body["fill"] = fill
+    body.update(wire_axis_fields(dataset, merged, path=path))
+    return body
+
+
+def transform_op(
+    dataset: Dataset,
+    method: str,
+    axes: Sequence[int | str] | None = None,
+    *,
+    axis: int | str | None = None,
+    path: str | None = None,
+) -> dict[str, Any]:
+    """Body for ``"transform": { "method": …, optional "axis" / "axes" }``."""
+    if method not in TRANSFORM_METHODS:
+        raise ValueError(
+            f"unknown transform method {method!r} "
+            f"(expected one of {sorted(TRANSFORM_METHODS)})"
+        )
+    body: dict[str, Any] = {"method": method}
+    body.update(wire_axis_fields(dataset, axes, axis=axis, path=path))
+    return body
+
+
 def op_key_from_doc(doc: dict[str, Any]) -> str | None:
-    """Single operation key on the document, if any."""
+    """Return the sole operation key on ``doc``, or ``None`` if zero or many."""
     ops = [k for k in doc if k in QUERY_OP_KEYS and k not in _QUERY_DOC_META]
     if len(ops) == 1:
         return ops[0]

@@ -1,4 +1,4 @@
-"""Query helpers: op wrappers, [`QueryResult`], and execution field mapping."""
+"""Query execution results and mapping from wire op keys to ``execution`` fields."""
 
 from __future__ import annotations
 
@@ -22,7 +22,7 @@ def _op_fields(
     )
 
 
-# Wire key → (scalar execution field, partial-reduction execution field).
+# List-style ops: wire key ``mean: [0]`` → operation_mean / operation_reduced_mean.
 _REDUCTION_WIRE_KEYS = (
     "sum",
     "mean",
@@ -39,8 +39,12 @@ _REDUCTION_WIRE_KEYS = (
     "nan_count",
     "inf_count",
     "null_count",
+    "nan_mean",
+    "nan_std",
+    "any_inf",
 )
 
+# Public map used by tests and advanced callers.
 REDUCTION_OPS: dict[str, tuple[str, str]] = {
     key: _op_fields(key) for key in _REDUCTION_WIRE_KEYS
 } | {
@@ -52,6 +56,27 @@ REDUCTION_OPS: dict[str, tuple[str, str]] = {
 def reduction_doc(
     dataset: str, op: str, axes: Sequence[int | str]
 ) -> dict[str, Any]:
+    """Build a minimal list-style reduction query document.
+
+    Parameters
+    ----------
+    dataset : str
+        Target dataset name.
+    op : str
+        Wire op key (e.g. ``"mean"``, ``"sum"``).
+    axes : sequence of int or str
+        Axis indices or names to reduce.
+
+    Returns
+    -------
+    dict
+        ``{"dataset": ..., op: [axis indices]}``.
+
+    Raises
+    ------
+    ValueError
+        If ``op`` is not in :data:`REDUCTION_OPS`.
+    """
     if op not in REDUCTION_OPS:
         raise ValueError(f"unknown reduction op: {op!r}")
     return {"dataset": dataset, op: list(axes)}
@@ -71,7 +96,27 @@ _MATRIX_FIELDS: dict[str, tuple[str, str]] = {
 
 @dataclass(frozen=True)
 class QueryResult:
-    """Parsed query response (use ``TetFile.query(..., raw=False)`` or op helpers)."""
+    """Parsed query response from :meth:`~tet.TetFile.execute` (``raw=False``).
+
+    Attributes
+    ----------
+    scalar : float, int, bool, or None
+        Full reduction result when all requested axes were reduced.
+    reduced : list or None
+        Partial reduction vector along remaining axes.
+    matrix : list of list or None
+        Covariance/correlation matrix when applicable.
+    matrix_order : list of str or None
+        Axis labels for matrix rows/columns.
+    histogram_counts, histogram_edges : list or None
+        Histogram op outputs.
+    raw : dict
+        Full wire JSON from the engine.
+
+    See Also
+    --------
+    value : ``scalar`` if set, else ``reduced``.
+    """
 
     accepted: bool
     message: str | None
@@ -81,14 +126,25 @@ class QueryResult:
     plan: dict[str, Any] | None
     execution: dict[str, Any] | None
     raw: dict[str, Any]
-    matrix: list[float] | None = None
+    matrix: list[float] | None = None  # row-major, order×order for cov/corr
     matrix_order: int | None = None
     histogram_counts: list[float] | None = None
     histogram_edges: list[float] | None = None
 
     @property
     def value(self) -> float | int | bool | list[float] | list[int] | list[bool]:
-        """Scalar aggregate, or partial-reduction vector when no scalar."""
+        """Primary result: ``.scalar`` if set, else ``.reduced``.
+
+        Returns
+        -------
+        float, int, bool, or list
+            The aggregate or reduced vector.
+
+        Raises
+        ------
+        TetError
+            If neither ``scalar`` nor ``reduced`` is set.
+        """
         if self.scalar is not None:
             return self.scalar
         if self.reduced is not None:
@@ -104,6 +160,7 @@ class QueryResult:
         path: str | None = None,
         require_execution: bool = False,
     ) -> QueryResult:
+        """Build from a wire ``QueryResponse`` dict; pass ``op`` to fill typed fields."""
         check_query_response(
             raw, path=path, require_execution=require_execution
         )
