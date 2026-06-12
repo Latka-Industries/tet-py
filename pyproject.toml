@@ -38,6 +38,7 @@ manifest-path = "native/Cargo.toml"
 module-name = "tet._native"
 python-source = "python"
 features = ["pyo3/extension-module"]
+py-limited-api = true
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

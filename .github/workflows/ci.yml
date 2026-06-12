@@ -28,6 +28,12 @@ jobs:
 
       - uses: astral-sh/setup-uv@v5
 
+      - name: Patch sibling tetration (dev)
+        working-directory: tet-py
+        run: |
+          mkdir -p .cargo
+          cp .cargo/config.toml.example .cargo/config.toml
+
       - name: Test
         working-directory: tet-py
         run: |
