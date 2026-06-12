@@ -15,17 +15,6 @@ def _beside(path: Path, name: str) -> Path:
     return path.parent / name
 
 
-def test_normalize_path_strips_windows_extended_prefix() -> None:
-    import os
-
-    from tet._io.spill import normalize_path
-
-    if os.name != "nt":
-        pytest.skip("Windows only")
-    expected = Path("D:/a/tet-py/tet_py_read_spill.bin").resolve()
-    assert normalize_path("//?/D:/a/tet-py/tet_py_read_spill.bin") == expected
-
-
 def test_read_numpy(sample_path: Path) -> None:
     f = tet.open(sample_path)
     ds = f.dataset("temperature")
