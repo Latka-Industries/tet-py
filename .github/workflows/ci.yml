@@ -30,9 +30,8 @@ jobs:
 
       - name: Patch sibling tetration (dev)
         working-directory: tet-py
-        run: |
-          mkdir -p .cargo
-          cp .cargo/config.toml.example .cargo/config.toml
+        shell: bash
+        run: cp .cargo/config.toml.example .cargo/config.toml
 
       - name: Test
         working-directory: tet-py
