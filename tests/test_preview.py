@@ -21,6 +21,15 @@ def test_query_execute_preview_ndarray(large_path: Path) -> None:
     assert r.preview_truncated
 
 
+def test_mean_preview_interchangeable(large_path: Path) -> None:
+    f = tet.open(large_path)
+    r = f.mean("a", preview=32)
+    assert isinstance(r, tet.QueryResult)
+    assert r.preview is not None
+    assert r.preview.size == 32
+    assert r.scalar is not None
+
+
 def test_query_execute_no_preview_by_default(large_path: Path) -> None:
     f = tet.open(large_path)
     r = f.query_execute({"dataset": "a", "mean": []}, raw=False)

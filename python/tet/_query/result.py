@@ -166,9 +166,14 @@ class QueryResult:
         _, truncated = preview_lists_from_execution(self.execution)
         return truncated
 
-    def preview_ndarray(self) -> np.ndarray | None:
+    @property
+    def preview(self) -> np.ndarray | None:
         """First N logical row-major values as a 1-D ``numpy.ndarray``, or ``None``."""
         return preview_ndarray_from_response(self.raw)
+
+    def preview_ndarray(self) -> np.ndarray | None:
+        """Same as :attr:`preview` (alias)."""
+        return self.preview
 
     @classmethod
     def from_response(
