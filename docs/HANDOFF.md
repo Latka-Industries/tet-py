@@ -21,11 +21,11 @@ Agent/onboarding doc for **`~/Code/tet-py`**. Parent project: **[tetration](http
 - [x] Phase 2 NumPy **ram** path: `read_numpy`, `Dataset.to_numpy`, `transform.to_numpy.*`, `TetWriter`, `write_dataset`
 - [x] Phase 2 NumPy **spill** path: `read_spill`, `transform.to_spill.*`, `SpillReadResult.to_numpy`, `SpillTransformResult.to_numpy`
 - [x] Phase 2 NumPy **sidecar** path: `transform.to_sidecar.*`, `SidecarTransformResult.to_numpy` / `.open`
-- [x] Phase 4 **PyPI** (0.1.0 shipped; **0.1.1** preview API on `main`, tag pending): abi3 wheels, `publish.yml`, `tetration = "0.1.9"` from crates.io only
+- [x] Phase 4 **PyPI** (0.1.0 + **0.1.1** shipped): abi3 wheels, `publish.yml`, `tetration = "0.1.9"` from crates.io only
 - [x] CI fixtures vendored in `tests/fixtures/` (no sibling tetration checkout)
 - [x] Package subpackages: `_core`, `_query`, `_io`, `_transform`; public `import tet` unchanged
 - [x] `uv sync --extra dev`, PyO3 **0.28**, **50** pytest tests, mypy on `python/tet`
-- [x] `tet.__version__` (0.1.1 on `main`), `tet.core_version()` (linked tetration 0.1.9)
+- [x] `tet.__version__` (0.1.1 on PyPI), `tet.core_version()` (linked tetration 0.1.9)
 - [x] Query preview: `preview=N` on reducers / `query_execute`; `QueryResult.preview` (THI-24)
 - [x] Docs: [tetration-docs/python](https://latka-industries.github.io/tetration-docs/python/), [CHANGELOG.md](../CHANGELOG.md)
 
@@ -73,7 +73,7 @@ Layout: `python/tet/` subpackages (`_core`, `_query`, `_io`, `_transform`); `nat
 
 - [x] Push to `github.com/Latka-Industries/tet-py`
 - [x] CI: `.github/workflows/ci.yml` (checkout sibling **tetration**, `uv sync` → `maturin develop` → `pytest`)
-- [x] **`tet-py`** on [PyPI](https://pypi.org/project/tet-py/) (0.1.0 shipped; 0.1.1 tag pending)
+- [x] **`tet-py`** on [PyPI](https://pypi.org/project/tet-py/) (0.1.1 current)
 - [x] `LICENSE-MIT` + `LICENSE-APACHE` (dual license, match tetration)
 - [x] README links tetration Phase 11, query fixtures, query_engine docs
 
@@ -178,7 +178,7 @@ User code  →  import tet  →  python/tet/__init__.py
 
 | Horizon    | Target                                                                                      |
 | ---------- | ------------------------------------------------------------------------------------------- |
-| **Short**  | PyPI 0.1.1 (preview) when tagged; Phase 2 tail (preflight), docs hygiene                  |
+| **Short**  | ~~PyPI 0.1.1~~ done; Phase 2 tail (preflight), docs hygiene                               |
 | **Medium** | `tet.convert` extras; upstream THI-60/61 writer/sidecar cleanup                             |
 | **Long**   | Zero-copy read; object-store paths (tetration Phase 12); optional C ABI for non-Python only |
 

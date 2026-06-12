@@ -8,7 +8,7 @@
 
 Site docs (broader Tetration + tet-py guides): [tetration-docs/python](https://latka-industries.github.io/tetration-docs/python/)
 
-Current tet-py release on `main`: **0.1.1** (preview API; PyPI tag pending).
+Current tet-py release: [**0.1.1**](https://pypi.org/project/tet-py/0.1.1/) on PyPI (query preview API).
 
 External references:
 

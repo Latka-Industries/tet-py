@@ -39,5 +39,5 @@ First public release on [PyPI](https://pypi.org/project/tet-py/0.1.0/). Links **
 - Do not `pip install tetration` — unrelated PyPI package. Use **`tet-py`** / **`import tet`**.
 - `tet.core_version()` reports the linked tetration crate (e.g. `0.1.9`); `tet.__version__` is the tet-py release.
 
-[0.1.1]: https://github.com/Latka-Industries/tet-py/compare/v0.1.0...v0.1.1
+[0.1.1]: https://pypi.org/project/tet-py/0.1.1/
 [0.1.0]: https://github.com/Latka-Industries/tet-py/releases/tag/v0.1.0

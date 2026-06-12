@@ -95,7 +95,7 @@ tet-py/
 - [x] NumPy read — spill (`read_spill`, `transform.to_spill`, `.to_numpy()` loaders)
 - [x] NumPy read — sidecar (`transform.to_sidecar`, `SidecarTransformResult.to_numpy`)
 - [x] NumPy write (`TetWriter`, `write_dataset`)
-- [x] PyPI wheels (`tet-py` 0.1.0+); `tetration = "0.1.9"` from crates.io
+- [x] PyPI wheels (`tet-py` 0.1.1); `tetration = "0.1.9"` from crates.io
 - [x] Query preview samples (`preview=N`, `QueryResult.preview`) — [#7](https://github.com/Latka-Industries/tet-py/issues/7)
 - [ ] Optional convert extras: `h5py`, `netCDF4`, `zarr`, `pandas`, `pyarrow` — [#10](https://github.com/Latka-Industries/tet-py/issues/10)
 
