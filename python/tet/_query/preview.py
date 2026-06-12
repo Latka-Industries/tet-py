@@ -34,8 +34,14 @@ def preview_lists_from_execution(
     return None, False
 
 
-def preview_ndarray_from_response(raw: dict[str, Any]) -> np.ndarray | None:
-    """Build a 1-D ``numpy.ndarray`` from ``execution.*_preview`` when present."""
+def preview_from_response(raw: dict[str, Any]) -> np.ndarray | None:
+    """Build a 1-D preview array from ``execution.*_preview`` when present.
+
+    Returns
+    -------
+    numpy.ndarray or None
+        1-D array (dtype from ``catalog.dtype`` when available); ``None`` if no samples.
+    """
     execution = raw.get("execution")
     if not isinstance(execution, dict):
         return None

@@ -10,7 +10,7 @@ import numpy as np
 
 from tet._core.errors import check_query_response
 from tet._native import TetError
-from tet._query.preview import preview_lists_from_execution, preview_ndarray_from_response
+from tet._query.preview import preview_from_response, preview_lists_from_execution
 
 def _op_fields(
     name: str,
@@ -113,6 +113,8 @@ class QueryResult:
         Axis labels for matrix rows/columns.
     histogram_counts, histogram_edges : list or None
         Histogram op outputs.
+    preview : numpy.ndarray or None
+        Capped raw sample values (1-D; dtype matches catalog) when ``preview=N`` was passed.
     raw : dict
         Full wire JSON from the engine.
 
@@ -166,11 +168,20 @@ class QueryResult:
         _, truncated = preview_lists_from_execution(self.execution)
         return truncated
 
-    def preview_ndarray(self) -> np.ndarray | None:
-        """First N logical row-major values as a 1-D ``numpy.ndarray``, or ``None``."""
-        return preview_ndarray_from_response(self.raw)
+    @property
+    def preview(self) -> np.ndarray | None:
+        """Capped raw payload samples as a 1-D ``numpy.ndarray``.
 
-    preview = property(preview_ndarray)
+        Populated when the query was executed with ``preview=N`` (parity with
+        ``tet query -x --preview N``). Row-major logical order; length ≤ ``N``.
+        Dtype follows ``catalog.dtype`` when present, else ``float64``.
+
+        Returns
+        -------
+        numpy.ndarray or None
+            1-D preview array, or ``None`` when no preview was requested or returned.
+        """
+        return preview_from_response(self.raw)
 
     @classmethod
     def from_response(
