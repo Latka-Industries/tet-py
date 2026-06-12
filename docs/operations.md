@@ -4,10 +4,10 @@
 
 Fixtures in examples (`tests/fixtures/` in this repo):
 
-| File | Dataset | Shape | Notes |
-| ---- | ------- | ----- | ----- |
-| `tests/fixtures/large.tet` | `"a"` | `(34, 64)` | Reductions, quantile, histogram |
-| `tests/fixtures/sample.tet` | `"temperature"` | `(2, 3)` | Covariance / correlation (rank 2) |
+| File                        | Dataset         | Shape      | Notes                             |
+| --------------------------- | --------------- | ---------- | --------------------------------- |
+| `tests/fixtures/large.tet`  | `"a"`           | `(34, 64)` | Reductions, quantile, histogram   |
+| `tests/fixtures/sample.tet` | `"temperature"` | `(2, 3)`   | Covariance / correlation (rank 2) |
 
 ```python
 import tet
@@ -20,12 +20,12 @@ f = tet.open("tests/fixtures/large.tet")
 
 **Every list-style reduction** (`mean`, `sum`, `min`, `max`, `count`, `std`, `var`, `product`, `norm_l1`, `norm_l2`, `median`, `all_finite`, `any_nan`, `any_inf`, `arg_min`, `arg_max`, `nan_count`, `inf_count`, `null_count`, `nan_mean`, `nan_std`) uses the same `axis` / `axes` arguments. Examples below use `mean`; swap in `std`, `count`, etc. as needed.
 
-| Call                       | Effect                                                                   |
-| -------------------------- | ------------------------------------------------------------------------ |
-| `f.mean("a")`              | Reduce **all** axes → scalar                                             |
+| Call                       | Effect                                                                          |
+| -------------------------- | ------------------------------------------------------------------------------- |
+| `f.mean("a")`              | Reduce **all** axes → scalar                                                    |
 | `f.mean("a", axis=0)`      | Reduce axis 0 → [`QueryResult`](../python/tet/_query/result.py) with `.reduced` |
-| `f.mean("a", axes=[0, 1])` | Reduce multiple axes                                                     |
-| `f.mean("a", axis="time")` | Resolve name from footer `dim_names` when present                        |
+| `f.mean("a", axes=[0, 1])` | Reduce multiple axes                                                            |
+| `f.mean("a", axis="time")` | Resolve name from footer `dim_names` when present                               |
 
 **`axis` vs `axes`**
 
@@ -288,11 +288,11 @@ On clean finite data, `nan_mean` / `nan_std` match `mean` / `std`.
 
 Sink-first API only: **`f.transform.to_<sink>.<method>(dataset, ...)`**. For arbitrary wire docs use :func:`build_query` + :meth:`~tet.TetFile.execute`.
 
-| Sink         | Example                                       | Returns / NumPy load                             |
-| ------------ | --------------------------------------------- | ------------------------------------------------ |
-| `to_numpy`   | `f.transform.to_numpy.zscore("a")`            | `numpy.ndarray` (full logical selection)         |
-| `to_spill`   | `f.transform.to_spill.softmax("a", path="…")` | :class:`~tet.SpillTransformResult` → ``.to_numpy()`` |
-| `to_sidecar` | `f.transform.to_sidecar.center("a")`          | :class:`~tet.SidecarTransformResult` → ``.to_numpy(f)`` |
+| Sink         | Example                                       | Returns / NumPy load                                  |
+| ------------ | --------------------------------------------- | ----------------------------------------------------- |
+| `to_numpy`   | `f.transform.to_numpy.zscore("a")`            | `numpy.ndarray` (full logical selection)              |
+| `to_spill`   | `f.transform.to_spill.softmax("a", path="…")` | :class:`~tet.SpillTransformResult` → `.to_numpy()`    |
+| `to_sidecar` | `f.transform.to_sidecar.center("a")`          | :class:`~tet.SidecarTransformResult` → `.to_numpy(f)` |
 
 Methods on each sink: `zscore`, `minmax`, `l1`, `l2`, `center`, `scale`, `log1p`, `sqrt`, `softmax`.
 
@@ -334,18 +334,18 @@ arr = f.read_numpy("a", selection=tet.selection_slices(tet.axis_slice(0, 100)))
 
 Integer dtypes (`i32`, `u8`, …) are supported where the engine materializes them; `f16` / `u32` / `u64` are not yet exported.
 
-**Memory:** `read_numpy` decodes the **full logical selection** into a new array (copy). There is no `memory_budget_bytes` preflight on this path today — if the selection is huge, slice it or use :meth:`~tet.TetFile.read_spill` (wire top-level ``spill``) and call :meth:`~tet.SpillReadResult.to_numpy`. See also [tetration query engine — memory budget](https://github.com/Latka-Industries/tetration/blob/main/docs/query_engine.md#memory-budget-and-execution-strategies).
+**Memory:** `read_numpy` decodes the **full logical selection** into a new array (copy). There is no `memory_budget_bytes` preflight on this path today — if the selection is huge, slice it or use :meth:`~tet.TetFile.read_spill` (wire top-level `spill`) and call :meth:`~tet.SpillReadResult.to_numpy`. See also [tetration query engine — memory budget](https://github.com/Latka-Industries/tetration/blob/main/docs/query_engine.md#memory-budget-and-execution-strategies).
 
 ### `read_spill`
 
-Spill a selection-only export to dense row-major LE bytes (wire ``mmap_spill``):
+Spill a selection-only export to dense row-major LE bytes (wire `mmap_spill`):
 
 ```python
 s = f.read_spill("a", path="a_full.bin")  # beside source .tet
 arr = s.to_numpy()
 ```
 
-Omit ``path`` for an engine temp file under the platform cache allowlist.
+Omit `path` for an engine temp file under the platform cache allowlist.
 
 ---
 
@@ -480,18 +480,18 @@ build_query("a", selection=sel, min=[1])
 
 ## Entry points (same schema as CLI)
 
-| Python                                 | CLI parity                              |
-| -------------------------------------- | --------------------------------------- |
-| `f.query(doc)`                         | `tet query -x` (execute, JSON string)   |
-| `f.plan_only(doc)`                     | `tet query` without `-x`                |
-| `f.query_execute(doc, device=...)`     | execute with `execution.device`         |
-| `f.execute(doc, plan=True)`            | plan only                               |
-| `f.read_numpy(dataset, selection=...)` | Materialize selection → `numpy.ndarray` |
-| `f.read_spill(dataset, path=...)` | Spill selection → :class:`~tet.SpillReadResult` |
-| `SpillTransformResult.to_numpy()` / `SpillReadResult.to_numpy()` | Load spill `.bin` → `ndarray` |
-| `SidecarTransformResult.to_numpy(f)` | Open sidecar `.tet` → `ndarray` |
-| `tet.write_dataset(path, name, array)` | Create one-dataset `.tet` from NumPy    |
-| `tet.TetWriter.create(path)`           | Buffered multi-dataset writer           |
+| Python                                                           | CLI parity                                      |
+| ---------------------------------------------------------------- | ----------------------------------------------- |
+| `f.query(doc)`                                                   | `tet query -x` (execute, JSON string)           |
+| `f.plan_only(doc)`                                               | `tet query` without `-x`                        |
+| `f.query_execute(doc, device=...)`                               | execute with `execution.device`                 |
+| `f.execute(doc, plan=True)`                                      | plan only                                       |
+| `f.read_numpy(dataset, selection=...)`                           | Materialize selection → `numpy.ndarray`         |
+| `f.read_spill(dataset, path=...)`                                | Spill selection → :class:`~tet.SpillReadResult` |
+| `SpillTransformResult.to_numpy()` / `SpillReadResult.to_numpy()` | Load spill `.bin` → `ndarray`                   |
+| `SidecarTransformResult.to_numpy(f)`                             | Open sidecar `.tet` → `ndarray`                 |
+| `tet.write_dataset(path, name, array)`                           | Create one-dataset `.tet` from NumPy            |
+| `tet.TetWriter.create(path)`                                     | Buffered multi-dataset writer                   |
 
 `doc` may be a **`dict`** or **JSON string**.
 
@@ -541,10 +541,10 @@ Plus: `execute`, `query`, `query_execute`, `plan_only`, `dataset`, `summary`, `i
 
 ## Planned improvements (tracking)
 
-| Topic | Issue |
-| ----- | ----- |
+| Topic                                | Issue                                                                                                                                    |
+| ------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------- |
 | `read_numpy` memory budget preflight | [tet-py#9](https://github.com/Latka-Industries/tet-py/issues/9), [tetration#19](https://github.com/Latka-Industries/tetration/issues/19) |
-| `write_dataset` integer dtypes | [tet-py#8](https://github.com/Latka-Industries/tet-py/issues/8) |
-| `f16` / `u32` / `u64` read export | [tetration#20](https://github.com/Latka-Industries/tetration/issues/20) |
-| Preview ndarray API | [tet-py#7](https://github.com/Latka-Industries/tet-py/issues/7) |
-| Full index | [HANDOFF.md — GitHub tracking](HANDOFF.md#github-tracking-tet-py) |
+| `write_dataset` integer dtypes       | [tet-py#8](https://github.com/Latka-Industries/tet-py/issues/8)                                                                          |
+| `f16` / `u32` / `u64` read export    | [tetration#20](https://github.com/Latka-Industries/tetration/issues/20)                                                                  |
+| Preview ndarray API                  | [tet-py#7](https://github.com/Latka-Industries/tet-py/issues/7)                                                                          |
+| Full index                           | [HANDOFF.md — GitHub tracking](HANDOFF.md#github-tracking-tet-py)                                                                        |

@@ -38,15 +38,15 @@ Agent/onboarding doc for **`~/Code/tet-py`**. Parent project: **[tetration](http
 
 **Linear** is canonical for Latka-Industries repos. GitHub issues #4–#11 were closed as duplicates; use Linear for status.
 
-| Linear | Topic |
-| ------ | ----- |
-| THI-22 | `tet.convert` orchestration (Phase 3) |
-| THI-24 | Preview ndarray from `query_execute` |
-| THI-23 | `read_numpy` memory budget preflight |
-| THI-26 | `write_dataset` integer dtypes |
-| THI-21 | Zero-copy mmap → NumPy |
+| Linear | Topic                                                          |
+| ------ | -------------------------------------------------------------- |
+| THI-22 | `tet.convert` orchestration (Phase 3)                          |
+| THI-24 | Preview ndarray from `query_execute`                           |
+| THI-23 | `read_numpy` memory budget preflight                           |
+| THI-26 | `write_dataset` integer dtypes                                 |
+| THI-21 | Zero-copy mmap → NumPy                                         |
 | THI-60 | Upstream: publish `f64_row_major` / `row_major` in catalog API |
-| THI-61 | Upstream: unify transform sidecar with `TetWriterSession` |
+| THI-61 | Upstream: unify transform sidecar with `TetWriterSession`      |
 
 **Shipped (Linear done):** THI-20 (PyPI), THI-25 (fixtures), THI-27 (docs).
 
@@ -176,11 +176,11 @@ User code  →  import tet  →  python/tet/__init__.py
 
 ## Outlook
 
-| Horizon    | Target                                                                                         |
-| ---------- | ---------------------------------------------------------------------------------------------- |
-| **Short**  | ~~PyPI 0.1.0~~ done; Phase 2 tail (preview, preflight), docs hygiene                         |
-| **Medium** | `tet.convert` extras; upstream THI-60/61 writer/sidecar cleanup                              |
-| **Long**   | Zero-copy read; object-store paths (tetration Phase 12); optional C ABI for non-Python only  |
+| Horizon    | Target                                                                                      |
+| ---------- | ------------------------------------------------------------------------------------------- |
+| **Short**  | ~~PyPI 0.1.0~~ done; Phase 2 tail (preview, preflight), docs hygiene                        |
+| **Medium** | `tet.convert` extras; upstream THI-60/61 writer/sidecar cleanup                             |
+| **Long**   | Zero-copy read; object-store paths (tetration Phase 12); optional C ABI for non-Python only |
 
 **Success (0.1.0):** `pip install tet-py` → `import tet` → open `.tet` → query, **`read_numpy`** / **`read_spill`**, transform sinks (**`to_numpy`** / **`to_spill`** / **`to_sidecar`**), **`write_dataset`** — without Rust on the end-user machine. Convert extras still planned.
 
@@ -200,17 +200,17 @@ Resolved: Phase 2 three-sink NumPy interchange; PyPI 0.1.0 (THI-20); docs site +
 
 ## Quick file map
 
-| File | Purpose |
-| ---- | ------- |
-| `native/src/lib.rs` | `PyTetFile`, materialize, `transform_to_numpy`, writer PyO3 |
-| `python/tet/file.py` | `TetFile` facade |
-| `python/tet/_io/numpy.py` | `read_numpy_array`, `read_spill_array` |
-| `python/tet/_io/spill.py` | spill path resolve, `load_spill_array`, `SpillReadResult` |
-| `python/tet/_io/writer.py` | `TetWriter`, `write_dataset` |
+| File                           | Purpose                                                       |
+| ------------------------------ | ------------------------------------------------------------- |
+| `native/src/lib.rs`            | `PyTetFile`, materialize, `transform_to_numpy`, writer PyO3   |
+| `python/tet/file.py`           | `TetFile` facade                                              |
+| `python/tet/_io/numpy.py`      | `read_numpy_array`, `read_spill_array`                        |
+| `python/tet/_io/spill.py`      | spill path resolve, `load_spill_array`, `SpillReadResult`     |
+| `python/tet/_io/writer.py`     | `TetWriter`, `write_dataset`                                  |
 | `python/tet/_transform/ops.py` | `TransformOps` sinks (`to_numpy` / `to_spill` / `to_sidecar`) |
-| `python/tet/__init__.py` | Public exports, `__version__` |
-| `tests/test_numpy.py` | ram / spill / sidecar interchange tests |
-| `CHANGELOG.md` | Release notes |
-| `README.md` | User-facing quick start |
+| `python/tet/__init__.py`       | Public exports, `__version__`                                 |
+| `tests/test_numpy.py`          | ram / spill / sidecar interchange tests                       |
+| `CHANGELOG.md`                 | Release notes                                                 |
+| `README.md`                    | User-facing quick start                                       |
 
 When behavior changes, update **README.md**, **CHANGELOG.md**, and this file. User docs: [tetration-docs/python](https://latka-industries.github.io/tetration-docs/python/).
