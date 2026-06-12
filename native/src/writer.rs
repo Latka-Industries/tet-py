@@ -6,7 +6,9 @@ use std::path::PathBuf;
 use pyo3::exceptions::PyRuntimeError;
 use pyo3::prelude::*;
 use pyo3::types::{PyAny, PyDict};
-use tetration::catalog::{CatalogError, CoordAxisV1, TetDatasetWrite, TetWriterSession};
+use tetration::catalog::{
+    CatalogError, CoordAxisV1, TetDatasetWrite, TetWriterSession, DATASET_DTYPE_TAG_V1,
+};
 
 use crate::numpy_write;
 
@@ -40,6 +42,24 @@ fn extract_coords(
         out.insert(axis, CoordAxisV1 { labels });
     }
     Ok(Some(out))
+}
+
+fn dataset_from_buffer(
+    name: String,
+    buf: numpy_write::NumpyWriteBuffer,
+    chunk_shape: Vec<u64>,
+) -> Result<TetDatasetWrite, CatalogError> {
+    let tags = DATASET_DTYPE_TAG_V1;
+    let dataset = if tags.is_f32(buf.dtype) {
+        TetDatasetWrite::f32_row_major(name, &buf.shape, &chunk_shape, buf.data)?
+    } else if tags.is_f64(buf.dtype) {
+        TetDatasetWrite::f64_row_major(name, &buf.shape, &chunk_shape, buf.data)?
+    } else {
+        return Err(CatalogError::InvalidWriteSpec(
+            "unsupported dataset dtype tag (tet-py write supports f32/f64 only)",
+        ));
+    };
+    Ok(dataset)
 }
 
 /// Optional footer metadata and tiling for :meth:`PyTetWriterSession.write_dataset`.
@@ -82,15 +102,15 @@ pub(crate) struct PyTetWriterSession {
 
 impl PyTetWriterSession {
     fn inner_mut(&mut self) -> PyResult<&mut TetWriterSession> {
-        self.inner.as_mut().ok_or_else(|| {
-            PyRuntimeError::new_err("TetWriterSession already committed")
-        })
+        self.inner
+            .as_mut()
+            .ok_or_else(|| PyRuntimeError::new_err("TetWriterSession already committed"))
     }
 
     fn inner_ref(&self) -> PyResult<&TetWriterSession> {
-        self.inner.as_ref().ok_or_else(|| {
-            PyRuntimeError::new_err("TetWriterSession already committed")
-        })
+        self.inner
+            .as_ref()
+            .ok_or_else(|| PyRuntimeError::new_err("TetWriterSession already committed"))
     }
 }
 
@@ -145,14 +165,8 @@ impl PyTetWriterSession {
         } else {
             (buf.shape.clone(), BTreeMap::new(), None, None)
         };
-        let mut dataset = TetDatasetWrite::row_major(
-            name,
-            buf.dtype,
-            &buf.shape,
-            &chunk_shape,
-            buf.data,
-        )
-        .map_err(|e| catalog_err(&e))?;
+        let mut dataset =
+            dataset_from_buffer(name, buf, chunk_shape).map_err(|e| catalog_err(&e))?;
         dataset.attrs = attrs;
         dataset.coords = coords;
         dataset.dim_names = dim_names;
@@ -169,9 +183,10 @@ impl PyTetWriterSession {
 
     /// Flush queued datasets and footer metadata to disk.
     fn commit(&mut self) -> PyResult<String> {
-        let mut inner = self.inner.take().ok_or_else(|| {
-            PyRuntimeError::new_err("TetWriterSession already committed")
-        })?;
+        let mut inner = self
+            .inner
+            .take()
+            .ok_or_else(|| PyRuntimeError::new_err("TetWriterSession already committed"))?;
         inner.metadata.tool = Some("tet-py".to_owned());
         inner.metadata.library_version = Some(env!("CARGO_PKG_VERSION").to_owned());
         let path = inner.commit().map_err(|e| catalog_err(&e))?;
