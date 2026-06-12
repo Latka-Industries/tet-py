@@ -289,11 +289,11 @@ On clean finite data, `nan_mean` / `nan_std` match `mean` / `std`.
 
 Sink-first API only: **`f.transform.to_<sink>.<method>(dataset, ...)`**. For arbitrary wire docs use :func:`build_query` + :meth:`~tet.TetFile.execute`.
 
-| Sink         | Example                                       | Returns                                          |
+| Sink         | Example                                       | Returns / NumPy load                             |
 | ------------ | --------------------------------------------- | ------------------------------------------------ |
 | `to_numpy`   | `f.transform.to_numpy.zscore("a")`            | `numpy.ndarray` (full logical selection)         |
-| `to_spill`   | `f.transform.to_spill.softmax("a", path="…")` | :class:`~tet.SpillTransformResult` (`.path`)     |
-| `to_sidecar` | `f.transform.to_sidecar.center("a")`          | :class:`~tet.SidecarTransformResult` (`.open()`) |
+| `to_spill`   | `f.transform.to_spill.softmax("a", path="…")` | :class:`~tet.SpillTransformResult` → ``.to_numpy()`` |
+| `to_sidecar` | `f.transform.to_sidecar.center("a")`          | :class:`~tet.SidecarTransformResult` → ``.to_numpy(f)`` |
 
 Methods on each sink: `zscore`, `minmax`, `l1`, `l2`, `center`, `scale`, `log1p`, `sqrt`, `softmax`.
 
@@ -301,9 +301,14 @@ Methods on each sink: `zscore`, `minmax`, `l1`, `l2`, `center`, `scale`, `log1p`
 arr = f.transform.to_numpy.zscore("a")   # numpy.ndarray; fails if selection > memory_budget_bytes
 arr.mean()
 
-s = f.transform.to_spill.softmax("a", path="/tmp/out.bin")  # when RAM export would fail
-s.path                               # Path to raw LE tensor bytes
+s = f.transform.to_spill.softmax("a", path="out.bin")  # path beside .tet or absolute
+arr = s.to_numpy()
+
+side = f.transform.to_sidecar.center("a", path="derived.tet")
+arr = side.to_numpy(f)
 ```
+
+Relative spill/sidecar paths resolve **beside the source `.tet`** (tetration allowlist).
 
 See [Memory budget](#memory-budget) for `to_numpy` vs `to_spill`.
 
@@ -330,7 +335,18 @@ arr = f.read_numpy("a", selection=tet.selection_slices(tet.axis_slice(0, 100)))
 
 Integer dtypes (`i32`, `u8`, …) are supported where the engine materializes them; `f16` / `u32` / `u64` are not yet exported.
 
-**Memory:** `read_numpy` decodes the **full logical selection** into a new array (copy). There is no `memory_budget_bytes` preflight on this path today — if the selection is huge, slice it or use the wire **`spill`** export via :meth:`~tet.TetFile.execute` (see [Memory budget](#memory-budget)). See also [tetration query engine — memory budget](https://github.com/Latka-Industries/tetration/blob/main/docs/query_engine.md#memory-budget-and-execution-strategies).
+**Memory:** `read_numpy` decodes the **full logical selection** into a new array (copy). There is no `memory_budget_bytes` preflight on this path today — if the selection is huge, slice it or use :meth:`~tet.TetFile.read_spill` (wire top-level ``spill``) and call :meth:`~tet.SpillReadResult.to_numpy`. See also [tetration query engine — memory budget](https://github.com/Latka-Industries/tetration/blob/main/docs/query_engine.md#memory-budget-and-execution-strategies).
+
+### `read_spill`
+
+Spill a selection-only export to dense row-major LE bytes (wire ``mmap_spill``):
+
+```python
+s = f.read_spill("a", path="a_full.bin")  # beside source .tet
+arr = s.to_numpy()
+```
+
+Omit ``path`` for an engine temp file under the platform cache allowlist.
 
 ---
 
@@ -361,8 +377,8 @@ In Python, use **`to_spill`** instead of `switch`:
 arr = f.transform.to_numpy.zscore("a")
 
 # dense row-major LE bytes on disk (no RAM cap on output size; path allowlist applies)
-s = f.transform.to_spill.zscore("a", path="/tmp/a_zscore.f32.bin")
-arr = np.fromfile(s.path, dtype=np.float32).reshape(s.shape)
+s = f.transform.to_spill.zscore("a", path="a_zscore.bin")
+arr = s.to_numpy()
 ```
 
 `to_numpy` only supports **`f32` / `f64`** transforms. Spill files are dtype-native little-endian; use `s.shape` and the source dataset dtype tag to pick `np.float32` vs `np.float64`.
@@ -371,7 +387,7 @@ High-level transform methods accept `device=` only. To raise the budget for one 
 
 ### `read_numpy`
 
-No budget preflight — the full selection is materialized. For tensors larger than RAM, **slice** the selection, or spill at the wire layer (top-level `"spill": "path"` on a selection-only query — no `transform` key) and load with NumPy from the file.
+No budget preflight — the full selection is materialized. For tensors larger than RAM, **slice** the selection, or use :meth:`~tet.TetFile.read_spill` and :meth:`~tet.SpillReadResult.to_numpy`.
 
 ### Reductions vs dense export
 
@@ -472,6 +488,9 @@ build_query("a", selection=sel, min=[1])
 | `f.query_execute(doc, device=...)`     | execute with `execution.device`         |
 | `f.execute(doc, plan=True)`            | plan only                               |
 | `f.read_numpy(dataset, selection=...)` | Materialize selection → `numpy.ndarray` |
+| `f.read_spill(dataset, path=...)` | Spill selection → :class:`~tet.SpillReadResult` |
+| `SpillTransformResult.to_numpy()` / `SpillReadResult.to_numpy()` | Load spill `.bin` → `ndarray` |
+| `SidecarTransformResult.to_numpy(f)` | Open sidecar `.tet` → `ndarray` |
 | `tet.write_dataset(path, name, array)` | Create one-dataset `.tet` from NumPy    |
 | `tet.TetWriter.create(path)`           | Buffered multi-dataset writer           |
 

@@ -13,22 +13,23 @@ Agent/onboarding doc for **`~/Code/tet-py`**. Parent project: **[tetration](http
 
 **C ABI** stays in the **tetration** repo later (Julia/R/Go), not in tet-py. Python uses **PyO3 → `tetration` rlib**, not the C layer.
 
-## Current state (May 2026)
+## Current state (June 2026)
 
-### Done / working\*\*
+### Done / working
 
-- [x] Repo scaffold: `pyproject.toml` (maturin), `native/` (`Cargo.toml`, `build.rs`, `TETRATION_VERSION` from `../../tetration`)
-- [x] Path dep: `tetration = { path = "../tetration", default-features = false }` (lean wheels; no HDF5/NetCDF in extension)
-- [x] PyO3 **0.28**, `uv sync --extra dev`, `uv run maturin develop`
-- [x] API: `tet.open(path)` (`str` / `Path`), `TetFile.path`, `datasets()`, `summary_json()`, `query(dict|str)` → JSON `QueryResponse`
-- [x] Smoke tests vs `../tetration/fixtures/small/tet/sample.tet` (mean = 3.5)
-- [x] `tet.__version__` (extension 0.1.0), `tet.core_version()` (linked tetration, e.g. 0.1.5)
+- [x] Phase 1 read/query UX: reductions, `QueryResult`, catalog, `build_query`, typed errors
+- [x] Phase 2 NumPy **ram** path: `read_numpy`, `Dataset.to_numpy`, `transform.to_numpy.*`, `TetWriter`, `write_dataset`
+- [x] Phase 2 NumPy **spill** path: `read_spill`, `transform.to_spill.*`, `SpillReadResult.to_numpy`, `SpillTransformResult.to_numpy`
+- [x] Phase 2 NumPy **sidecar** path: `transform.to_sidecar.*`, `SidecarTransformResult.to_numpy`
+- [x] `uv sync --extra dev`, PyO3 **0.28**, path dep `tetration = { path = "../tetration" }`, smoke + interchange tests (55)
+- [x] `tet.__version__` (0.1.0), `tet.core_version()` (linked tetration, e.g. 0.1.9)
 
-### Not done\*\*
+### Not done
 
-- No PyPI publish; git remote on **Latka-Industries/tet-py** (private) — track [#5](https://github.com/Latka-Industries/tet-py/issues/5)
-- Phase 3 **convert** extras (`tet.convert`) not started — [#10](https://github.com/Latka-Industries/tet-py/issues/10)
-- CI still checks out sibling **tetration** — [#6](https://github.com/Latka-Industries/tet-py/issues/6)
+- No PyPI publish — [#5](https://github.com/Latka-Industries/tet-py/issues/5)
+- Phase 3 **convert** extras (`tet.convert`) — [#10](https://github.com/Latka-Industries/tet-py/issues/10)
+- CI sibling **tetration** checkout — [#6](https://github.com/Latka-Industries/tet-py/issues/6)
+- Phase 2 tail: preview ndarray ([#7](https://github.com/Latka-Industries/tet-py/issues/7)), `read_numpy` preflight ([#9](https://github.com/Latka-Industries/tet-py/issues/9)), integer write dtypes ([#8](https://github.com/Latka-Industries/tet-py/issues/8))
 
 ## GitHub tracking (tet-py)
 
@@ -48,14 +49,15 @@ Agent/onboarding doc for **`~/Code/tet-py`**. Parent project: **[tetration](http
 ## Dev commands (uv)
 
 ```bash
-cd ~/Code/tet-py
+cd ~/Code/LatkaIndustries/tet-py   # or ~/Code/tet-py
 uv sync --extra dev
 uv run maturin develop          # after Rust changes
 uv run pytest -q
+uv run mypy python/tet
 uv run python -c "import tet; print(tet.__version__, tet.core_version())"
 ```
 
-Layout: `python/tet/` = facade; `native/src/lib.rs` = PyO3; tests expect sibling `~/Code/tetration`.
+Layout: `python/tet/` = facade (`_numpy`, `_spill`, `_transform`, …); `native/src/lib.rs` = PyO3; tests expect sibling `tetration` fixtures.
 
 ---
 
@@ -93,6 +95,9 @@ Goal: make **NumPy** the primary Python array surface for `.tet` (read and write
 
 - [x] `read_numpy(dataset, selection=...)` (or `Dataset.to_numpy()`) → `numpy.ndarray` with catalog shape / dtype
 - [x] `transform.to_numpy.*` → full transformed `numpy.ndarray` (wire `write: ram`; budget preflight)
+- [x] `transform.to_spill.*` → spill `.bin` + :meth:`~tet.SpillTransformResult.to_numpy`
+- [x] `transform.to_sidecar.*` → sidecar `.tet` + :meth:`~tet.SidecarTransformResult.to_numpy`
+- [x] `read_spill` selection export + :meth:`~tet.SpillReadResult.to_numpy`
 - [x] PyO3 wrapper over `materialize_read_plan_*` / `materialize_query_transform_ram`; copy into NumPy (v1)
 - [ ] Optional: `query_execute(..., preview=N)` → `ndarray` for capped `execution.*_preview` samples — [#7](https://github.com/Latka-Industries/tet-py/issues/7)
 - [x] Document RAM budget: `to_numpy` vs `to_spill`, `read_numpy` slice/spill notes ([`operations.md`](operations.md#memory-budget))
@@ -171,7 +176,7 @@ User code  →  import tet  →  python/tet/__init__.py
 | **Medium** | NumPy read/write + convert extras; embedders replace subprocess `tet`                          |
 | **Long**   | Versioned wheels per platform; optional alignment with tetration **C ABI** for non-Python only |
 
-**Success:** `pip install tet-py` → `import tet` → open `.tet` → query or **`read_numpy`** → optional **`write_dataset`** / convert from CSV/Parquet/HDF5 via extras — without requiring Rust on the end user machine.
+**Success:** `pip install tet-py` → `import tet` → open `.tet` → query, **`read_numpy`** / **`read_spill`**, transform sinks (**`to_numpy`** / **`to_spill`** / **`to_sidecar`**), optional **`write_dataset`** / convert via extras — without Rust on the end-user machine.
 
 **Non-goals for tet-py v0.x:** reimplement layout/query in Python; sparse native format; GPU in Python wheel by default; duplicate Rust `tet convert` codecs inside the extension.
 
@@ -183,7 +188,7 @@ User code  →  import tet  →  python/tet/__init__.py
 2. Submodule **tetration** vs path sibling vs vendored fixtures — [#6](https://github.com/Latka-Industries/tet-py/issues/6)
 3. Exception hierarchy depth vs plain `RuntimeError` from PyO3 today?
 
-Resolved: Phase 2 read+write shipped; PyPI timing tracked in [#5](https://github.com/Latka-Industries/tet-py/issues/5).
+Resolved: Phase 2 three-sink NumPy interchange (ram/spill/sidecar) shipped on branch; PyPI timing tracked in [#5](https://github.com/Latka-Industries/tet-py/issues/5). Docs hygiene ([#4](https://github.com/Latka-Industries/tet-py/issues/4)) synced in June 2026 pass.
 
 ---
 
@@ -191,10 +196,12 @@ Resolved: Phase 2 read+write shipped; PyPI timing tracked in [#5](https://github
 
 | File                     | Purpose                                               |
 | ------------------------ | ----------------------------------------------------- |
-| `native/src/lib.rs`      | `PyTetFile`, `open`, `core_version`, `_native` module |
+| `native/src/lib.rs`      | `PyTetFile`, `read_numpy`, `transform_to_numpy`, writer |
+| `python/tet/_numpy.py`   | `read_numpy_array`, `read_spill_array`                |
+| `python/tet/_spill.py`   | spill path resolve, `load_spill_array`, `SpillReadResult` |
+| `python/tet/_transform.py` | `TransformOps` sinks (`to_numpy` / `to_spill` / `to_sidecar`) |
 | `python/tet/__init__.py` | Public exports, `__version__`                         |
-| `native/build.rs`        | `TETRATION_VERSION` from sibling crate                |
-| `tests/test_smoke.py`    | `sample.tet` mean query                               |
+| `tests/test_numpy.py`    | ram / spill / sidecar interchange tests               |
 | `README.md`              | User-facing quick start                               |
 
 When behavior changes, update **README.md** and this file; keep **GitHub tracking** issue links in sync. Cross-repo docs: [tetration#18](https://github.com/Latka-Industries/tetration/issues/18).

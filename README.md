@@ -12,7 +12,7 @@ Python bindings for [**Tetration**](https://github.com/Latka-Industries/tetratio
 | Rust core | [`tetration`](https://crates.io/crates/tetration) on crates.io |
 | CLI (no Python) | [`tet`](https://github.com/Latka-Industries/tetration) binary from the main repo |
 
-**Status:** read/query API, NumPy read/write (`read_numpy`, `TetWriter`, `write_dataset`). Convert extras and PyPI wheels are next — see [docs/HANDOFF.md](docs/HANDOFF.md#github-tracking-tet-py) for issue tracking.
+**Status:** read/query API; NumPy interchange on all three tetration dense sinks (**ram** `read_numpy` / `to_numpy`, **spill** `read_spill` / `to_spill`, **sidecar** `to_sidecar`); write via `TetWriter` / `write_dataset`. Convert extras and PyPI wheels are next — see [docs/HANDOFF.md](docs/HANDOFF.md#github-tracking-tet-py).
 
 Do not `pip install tetration` — that PyPI name is an unrelated math package. Use **`tet-py`** / **`import tet`**.
 
@@ -50,8 +50,11 @@ uv run mypy python/tet
 import tet
 
 with tet.open("../tetration/fixtures/small/tet/large.tet") as f:
-    print(list(f), f.dataset("a").shape)   # ['a'], (34, 64)
     print(f.mean("a"), f.quantile("a", 0.5))
+    arr = f.read_numpy("a")                         # ram
+    z = f.transform.to_numpy.zscore("a")            # transform → ram
+    spill = f.transform.to_spill.zscore("a", path="a_zscore.bin")
+    same = spill.to_numpy()                         # transform → spill → ndarray
 ```
 
 **Operations reference** (every op with examples): [**docs/operations.md**](docs/operations.md)
@@ -59,6 +62,7 @@ with tet.open("../tetration/fixtures/small/tet/large.tet") as f:
 | Topic                                     | Where                                                                                                  |
 | ----------------------------------------- | ------------------------------------------------------------------------------------------------------ |
 | `mean`, `min`, `quantile`, `histogram`, … | [docs/operations.md](docs/operations.md)                                                               |
+| NumPy ram / spill / sidecar               | [docs/operations.md#read_numpy](docs/operations.md#read_numpy)                                         |
 | `build_query`, `selection_slices`         | [docs/operations.md#selection-and-build_query](docs/operations.md#selection-and-build_query)           |
 | Wire schema / CLI                         | [tetration query engine](https://github.com/Latka-Industries/tetration/blob/main/docs/query_engine.md) |
 | All docs                                  | [docs/README.md](docs/README.md)                                                                       |
@@ -72,7 +76,7 @@ Both return the full **`tet info --json`** dict (superblock, datasets, **all chu
 ```text
 tet-py/
   pyproject.toml      # PEP 621 + maturin
-  python/tet/         # facade (_file, _catalog, _query, _query_doc, _errors)
+  python/tet/         # facade (_file, _numpy, _spill, _transform, _query, …)
   native/             # PyO3 extension (links tetration)
     src/lib.rs
   tests/
@@ -90,7 +94,9 @@ tet-py/
 - [x] `Dataset`, `iter_datasets()`, `f[0]` / `f["name"]`, axis index or `dim_names`
 - [x] `UnknownDatasetError` / `UnknownAxisError`; optional `typing_stub()`
 - [x] mypy + `_native.pyi`
-- [x] NumPy read (`read_numpy`, `Dataset.to_numpy`, `transform.to_numpy`)
+- [x] NumPy read — ram (`read_numpy`, `Dataset.to_numpy`, `transform.to_numpy`)
+- [x] NumPy read — spill (`read_spill`, `transform.to_spill`, `.to_numpy()` loaders)
+- [x] NumPy read — sidecar (`transform.to_sidecar`, `SidecarTransformResult.to_numpy`)
 - [x] NumPy write (`TetWriter`, `write_dataset`)
 - [ ] Optional convert extras: `h5py`, `netCDF4`, `zarr`, `pandas`, `pyarrow` — [#10](https://github.com/Latka-Industries/tet-py/issues/10)
 - [ ] Wheels on PyPI; pin `tetration = "x.y.z"` from crates.io for release builds — [#5](https://github.com/Latka-Industries/tet-py/issues/5)
