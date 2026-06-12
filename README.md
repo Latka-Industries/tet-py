@@ -97,7 +97,20 @@ tet-py/
 - [x] NumPy write (`TetWriter`, `write_dataset`)
 - [x] PyPI wheels (`tet-py` 0.1.1); `tetration = "0.1.9"` from crates.io
 - [x] Query preview samples (`preview=N`, `QueryResult.preview`) — [#7](https://github.com/Latka-Industries/tet-py/issues/7)
-- [ ] Optional convert extras: `h5py`, `netCDF4`, `zarr`, `pandas`, `pyarrow` — [#10](https://github.com/Latka-Industries/tet-py/issues/10)
+- [x] CI fixtures vendored in `tests/fixtures/` (no sibling tetration checkout) — [#6](https://github.com/Latka-Industries/tet-py/issues/6)
+
+## To do
+
+### Near-term
+
+- [ ] **`read_numpy` preflight** ([#9](https://github.com/Latka-Industries/tet-py/issues/9)) — fail fast on oversized materialize (blocked on [tetration #19](https://github.com/Latka-Industries/tetration/issues/19))
+- [ ] **Integer `write_dataset` dtypes** ([#8](https://github.com/Latka-Industries/tet-py/issues/8)) — beyond f32/f64
+- [ ] **`tet.convert` orchestration** ([#10](https://github.com/Latka-Industries/tet-py/issues/10)) — optional extras (`h5py`, `netCDF4`, `zarr`, `pandas`, `pyarrow`); Rust `tet convert` stays the fast path when native libs are installed
+- [ ] **Zero-copy mmap → NumPy** ([#11](https://github.com/Latka-Industries/tet-py/issues/11)) — views over mmap’d raw payloads (P2; after copy path stabilizes)
+
+### Docs
+
+- [ ] Keep [tetration-docs/python](https://latka-industries.github.io/tetration-docs/python/) in sync with releases
 
 ## Related
 
