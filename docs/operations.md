@@ -49,6 +49,25 @@ r = f.std("a", axis=0)
 r.reduced                             # length 64, one std per column
 ```
 
+## Preview samples (`preview=N`)
+
+Parity with `tet query -t file.tet -x --preview N`: while executing a reduction, optionally include up to **N** raw payload values in the response. Does not materialize the full tensor — use `read_numpy` for that.
+
+| Call | Returns |
+| ---- | ------- |
+| `f.mean("a")` | `float` (scalar mean) |
+| `f.mean("a", preview=32)` | `QueryResult` — `.scalar` + `.preview` (`numpy.ndarray`, 1-D, length ≤ 32) |
+| `f.query_execute(doc, preview=32, raw=False)` | same `QueryResult` shape |
+
+```python
+r = f.mean("a", preview=32)
+r.scalar          # mean over full selection
+r.preview         # np.ndarray, dtype from catalog
+r.preview_truncated   # True when more values exist beyond N
+```
+
+`preview=N` is accepted on all list-style reducers, `quantile`, `histogram`, `null_count`, and `query_execute` / `execute`.
+
 ## Return shape: `raw` and `QueryResult`
 
 | `raw`             | Full reduction                                 | Partial reduction (one or more axes left)               |
@@ -548,5 +567,4 @@ Plus: `execute`, `query`, `query_execute`, `plan_only`, `dataset`, `summary`, `i
 | `read_numpy` memory budget preflight | [tet-py#9](https://github.com/Latka-Industries/tet-py/issues/9), [tetration#19](https://github.com/Latka-Industries/tetration/issues/19) |
 | `write_dataset` integer dtypes       | [tet-py#8](https://github.com/Latka-Industries/tet-py/issues/8)                                                                          |
 | `f16` / `u32` / `u64` read export    | [tetration#20](https://github.com/Latka-Industries/tetration/issues/20)                                                                  |
-| Preview ndarray API                  | [tet-py#7](https://github.com/Latka-Industries/tet-py/issues/7)                                                                          |
-| Full index                           | [HANDOFF.md — GitHub tracking](HANDOFF.md#github-tracking-tet-py)                                                                        |
+| Full index                           | [HANDOFF.md — issue tracking](HANDOFF.md#issue-tracking)                                                                                  |

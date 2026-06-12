@@ -13,7 +13,7 @@ Python bindings for [**Tetration**](https://github.com/Latka-Industries/tetratio
 | Rust core | [`tetration`](https://crates.io/crates/tetration) on crates.io |
 | CLI (no Python) | [`tet`](https://github.com/Latka-Industries/tetration) binary from the main repo |
 
-**Status (0.1.0):** read/query API; NumPy ram / spill / sidecar; `TetWriter` / `write_dataset` (f32/f64). **Next:** `tet.convert` extras, preview ndarray, integer write dtypes — see [CHANGELOG.md](CHANGELOG.md) and [docs/HANDOFF.md](docs/HANDOFF.md).
+**Status (0.1.1):** read/query API (including `preview=N` on reductions); NumPy ram / spill / sidecar; `TetWriter` / `write_dataset` (f32/f64). **Next:** `tet.convert` extras, `read_numpy` preflight, integer write dtypes — see [CHANGELOG.md](CHANGELOG.md) and [docs/HANDOFF.md](docs/HANDOFF.md).
 
 Do not `pip install tetration` — that PyPI name is an unrelated math package. Use **`tet-py`** / **`import tet`**.
 
@@ -45,6 +45,7 @@ import tet
 
 with tet.open("tests/fixtures/large.tet") as f:  # or any .tet path
     print(f.mean("a"), f.quantile("a", 0.5))
+    r = f.mean("a", preview=32)                   # QueryResult: r.scalar + r.preview (ndarray)
     arr = f.read_numpy("a")                         # ram
     z = f.transform.to_numpy.zscore("a")            # transform → ram
     spill = f.transform.to_spill.zscore("a", path="a_zscore.bin")
@@ -94,7 +95,8 @@ tet-py/
 - [x] NumPy read — spill (`read_spill`, `transform.to_spill`, `.to_numpy()` loaders)
 - [x] NumPy read — sidecar (`transform.to_sidecar`, `SidecarTransformResult.to_numpy`)
 - [x] NumPy write (`TetWriter`, `write_dataset`)
-- [x] PyPI wheels (`tet-py` 0.1.0); `tetration = "0.1.9"` from crates.io
+- [x] PyPI wheels (`tet-py` 0.1.0+); `tetration = "0.1.9"` from crates.io
+- [x] Query preview samples (`preview=N`, `QueryResult.preview`) — [#7](https://github.com/Latka-Industries/tet-py/issues/7)
 - [ ] Optional convert extras: `h5py`, `netCDF4`, `zarr`, `pandas`, `pyarrow` — [#10](https://github.com/Latka-Industries/tet-py/issues/10)
 
 ## Related

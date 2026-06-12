@@ -8,6 +8,8 @@
 
 Site docs (broader Tetration + tet-py guides): [tetration-docs/python](https://latka-industries.github.io/tetration-docs/python/)
 
+Current tet-py release on `main`: **0.1.1** (preview API; PyPI tag pending).
+
 External references:
 
 - [Tetration query engine](https://github.com/Latka-Industries/tetration/blob/main/docs/query_engine.md) — wire JSON schema (CLI parity)

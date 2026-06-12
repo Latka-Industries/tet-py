@@ -2,16 +2,18 @@
 
 ## [Unreleased]
 
-### Added
-
-- `preview=N` on `query_execute`, `execute`, and reduction helpers (`mean`, `sum`, …); `QueryResult.preview` (`numpy.ndarray`, 1-D) for capped `execution.*_preview` samples (parity with `tet query --preview`) ([#7](https://github.com/Latka-Industries/tet-py/issues/7))
-
 ### Planned
 
 - `read_numpy` memory budget preflight ([#9](https://github.com/Latka-Industries/tet-py/issues/9))
 - Integer `write_dataset` dtypes ([#8](https://github.com/Latka-Industries/tet-py/issues/8))
 - `tet.convert` optional extras ([#10](https://github.com/Latka-Industries/tet-py/issues/10))
 - Zero-copy mmap → NumPy ([#11](https://github.com/Latka-Industries/tet-py/issues/11))
+
+## [0.1.1] - 2026-06-12
+
+### Added
+
+- `preview=N` on `query_execute`, `execute`, and reduction helpers (`mean`, `sum`, …); `QueryResult.preview` (`numpy.ndarray`, 1-D) for capped `execution.*_preview` samples (parity with `tet query --preview`) ([#7](https://github.com/Latka-Industries/tet-py/issues/7) / THI-24)
 
 ## [0.1.0] - 2026-06-12
 
@@ -37,4 +39,5 @@ First public release on [PyPI](https://pypi.org/project/tet-py/0.1.0/). Links **
 - Do not `pip install tetration` — unrelated PyPI package. Use **`tet-py`** / **`import tet`**.
 - `tet.core_version()` reports the linked tetration crate (e.g. `0.1.9`); `tet.__version__` is the tet-py release.
 
+[0.1.1]: https://github.com/Latka-Industries/tet-py/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/Latka-Industries/tet-py/releases/tag/v0.1.0

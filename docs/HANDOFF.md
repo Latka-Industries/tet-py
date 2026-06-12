@@ -21,17 +21,18 @@ Agent/onboarding doc for **`~/Code/tet-py`**. Parent project: **[tetration](http
 - [x] Phase 2 NumPy **ram** path: `read_numpy`, `Dataset.to_numpy`, `transform.to_numpy.*`, `TetWriter`, `write_dataset`
 - [x] Phase 2 NumPy **spill** path: `read_spill`, `transform.to_spill.*`, `SpillReadResult.to_numpy`, `SpillTransformResult.to_numpy`
 - [x] Phase 2 NumPy **sidecar** path: `transform.to_sidecar.*`, `SidecarTransformResult.to_numpy` / `.open`
-- [x] Phase 4 **PyPI 0.1.0**: abi3 wheels (Linux, macOS, Windows), `publish.yml`, `tetration = "0.1.9"` from crates.io only
+- [x] Phase 4 **PyPI** (0.1.0 shipped; **0.1.1** preview API on `main`, tag pending): abi3 wheels, `publish.yml`, `tetration = "0.1.9"` from crates.io only
 - [x] CI fixtures vendored in `tests/fixtures/` (no sibling tetration checkout)
 - [x] Package subpackages: `_core`, `_query`, `_io`, `_transform`; public `import tet` unchanged
-- [x] `uv sync --extra dev`, PyO3 **0.28**, **47** pytest tests, mypy on `python/tet`
-- [x] `tet.__version__` (0.1.0), `tet.core_version()` (linked tetration 0.1.9)
+- [x] `uv sync --extra dev`, PyO3 **0.28**, **50** pytest tests, mypy on `python/tet`
+- [x] `tet.__version__` (0.1.1 on `main`), `tet.core_version()` (linked tetration 0.1.9)
+- [x] Query preview: `preview=N` on reducers / `query_execute`; `QueryResult.preview` (THI-24)
 - [x] Docs: [tetration-docs/python](https://latka-industries.github.io/tetration-docs/python/), [CHANGELOG.md](../CHANGELOG.md)
 
 ### Not done
 
 - Phase 3 **convert** extras (`tet.convert`) — [#10](https://github.com/Latka-Industries/tet-py/issues/10) / THI-22
-- Phase 2 tail: ~~preview ndarray~~ (THI-24); `read_numpy` preflight ([#9](https://github.com/Latka-Industries/tet-py/issues/9) / THI-23), integer write dtypes ([#8](https://github.com/Latka-Industries/tet-py/issues/8) / THI-26)
+- Phase 2 tail: `read_numpy` preflight ([#9](https://github.com/Latka-Industries/tet-py/issues/9) / THI-23), integer write dtypes ([#8](https://github.com/Latka-Industries/tet-py/issues/8) / THI-26)
 - Zero-copy mmap → NumPy ([#11](https://github.com/Latka-Industries/tet-py/issues/11) / THI-21)
 
 ## Issue tracking
@@ -177,11 +178,11 @@ User code  →  import tet  →  python/tet/__init__.py
 
 | Horizon    | Target                                                                                      |
 | ---------- | ------------------------------------------------------------------------------------------- |
-| **Short**  | ~~PyPI 0.1.0~~ done; ~~preview~~ (THI-24); Phase 2 tail (preflight), docs hygiene         |
+| **Short**  | PyPI 0.1.1 (preview) when tagged; Phase 2 tail (preflight), docs hygiene                  |
 | **Medium** | `tet.convert` extras; upstream THI-60/61 writer/sidecar cleanup                             |
 | **Long**   | Zero-copy read; object-store paths (tetration Phase 12); optional C ABI for non-Python only |
 
-**Success (0.1.0):** `pip install tet-py` → `import tet` → open `.tet` → query, **`read_numpy`** / **`read_spill`**, transform sinks (**`to_numpy`** / **`to_spill`** / **`to_sidecar`**), **`write_dataset`** — without Rust on the end-user machine. Convert extras still planned.
+**Success (0.1.x):** `pip install tet-py` → `import tet` → open `.tet` → query (optional **`preview=N`**), **`read_numpy`** / **`read_spill`**, transform sinks (**`to_numpy`** / **`to_spill`** / **`to_sidecar`**), **`write_dataset`** — without Rust on the end-user machine. Convert extras still planned.
 
 **Non-goals for tet-py v0.x:** reimplement layout/query in Python; sparse native format; GPU in Python wheel by default; duplicate Rust `tet convert` codecs inside the extension.
 
@@ -193,7 +194,7 @@ User code  →  import tet  →  python/tet/__init__.py
 2. Fixtures — **resolved:** vendored `tests/fixtures/`.
 3. Exception hierarchy depth vs plain `RuntimeError` from PyO3 today?
 
-Resolved: Phase 2 three-sink NumPy interchange; PyPI 0.1.0 (THI-20); docs site + CHANGELOG (June 2026).
+Resolved: Phase 2 three-sink NumPy interchange; PyPI 0.1.0 (THI-20); preview API 0.1.1 (THI-24); docs site + CHANGELOG (June 2026).
 
 ---
 
@@ -208,6 +209,8 @@ Resolved: Phase 2 three-sink NumPy interchange; PyPI 0.1.0 (THI-20); docs site +
 | `python/tet/_io/writer.py`     | `TetWriter`, `write_dataset`                                  |
 | `python/tet/_transform/ops.py` | `TransformOps` sinks (`to_numpy` / `to_spill` / `to_sidecar`) |
 | `python/tet/__init__.py`       | Public exports, `__version__`                                 |
+| `python/tet/_query/preview.py` | `execution.*_preview` → NumPy                                   |
+| `tests/test_preview.py`        | Preview cap + `QueryResult.preview`                             |
 | `tests/test_numpy.py`          | ram / spill / sidecar interchange tests                       |
 | `CHANGELOG.md`                 | Release notes                                                 |
 | `README.md`                    | User-facing quick start                                       |
