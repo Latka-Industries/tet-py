@@ -81,7 +81,7 @@ Layout: `python/tet/` subpackages (`_core`, `_query`, `_io`, `_transform`); `nat
 Goal: parity with common `tet query -t … -x` embedder paths without hand-rolled JSON everywhere.
 
 - [x] `query()` → return **`dict`** (parsed from Rust JSON in Python facade)
-- [x] `query_execute(doc, device=..., preview=N)` sets `execution.device` and preview cap; `QueryResult.preview_ndarray()`
+- [x] `query_execute(doc, device=..., preview=N)` sets `execution.device` and preview cap; `QueryResult.preview`
 - [x] `info()` / `summary()` → **`dict`** (parsed `summary_json()`; parity with `tet info --json`)
 - [x] `plan_only(doc)` → plan without execution (`ExecuteQueryOptions::plan_only`)
 - [x] `mean` / `sum` / `min` / `max` / `std` / `var` / `count` / `product` / `norm_l1` / `norm_l2` / `median` / `all_finite` / `any_nan` / `arg_min` / `arg_max` — helpers over `query()`; `axis=` by index or `dim_names`
@@ -104,7 +104,7 @@ Goal: make **NumPy** the primary Python array surface for `.tet` (read and write
 - [x] `transform.to_sidecar.*` → sidecar `.tet` + :meth:`~tet.SidecarTransformResult.to_numpy`
 - [x] `read_spill` selection export + :meth:`~tet.SpillReadResult.to_numpy`
 - [x] PyO3 wrapper over `materialize_read_plan_*` / `materialize_query_transform_ram`; copy into NumPy (v1)
-- [x] `query_execute(..., preview=N)` → `QueryResult.preview_ndarray()` for capped `execution.*_preview` samples — [#7](https://github.com/Latka-Industries/tet-py/issues/7) / THI-24
+- [x] `query_execute(..., preview=N)` → `QueryResult.preview` for capped `execution.*_preview` samples — [#7](https://github.com/Latka-Industries/tet-py/issues/7) / THI-24
 - [x] Document RAM budget: `to_numpy` vs `to_spill`, `read_numpy` slice/spill notes ([`operations.md`](operations.md#memory-budget))
 - [ ] `read_numpy` budget preflight (blocked on [tetration#19](https://github.com/Latka-Industries/tetration/issues/19)) — [#9](https://github.com/Latka-Industries/tet-py/issues/9)
 - [ ] Integer `write_dataset` dtypes beyond f32/f64 — [#8](https://github.com/Latka-Industries/tet-py/issues/8)

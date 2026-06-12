@@ -15,6 +15,7 @@ def test_query_execute_preview_ndarray(large_path: Path) -> None:
     r = f.query_execute({"dataset": "a", "mean": []}, preview=32, raw=False)
     arr = r.preview_ndarray()
     assert arr is not None
+    assert (r.preview == arr).all()
     assert arr.ndim == 1
     assert arr.size == 32
     assert arr.dtype == np.float32

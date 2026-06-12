@@ -314,7 +314,7 @@ class TetFile:
         -------
         dict or QueryResult
             Wire JSON when ``raw=True``; parsed result with ``.scalar`` / ``.reduced`` when ``raw=False``.
-            Use :meth:`~tet.QueryResult.preview_ndarray` on results when ``preview`` is set.
+            Use :attr:`~tet.QueryResult.preview` on results when ``preview`` is set.
 
         Raises
         ------
@@ -375,7 +375,7 @@ class TetFile:
         device : str, optional
             Written to ``execution.device`` before execute (e.g. ``"cpu"``).
         preview : int, optional
-            Cap for ``execution.*_preview`` samples; use :meth:`~tet.QueryResult.preview_ndarray`.
+            Cap for ``execution.*_preview`` samples; use :attr:`~tet.QueryResult.preview`.
         raw : bool, default True
             Same as :meth:`query`.
 
