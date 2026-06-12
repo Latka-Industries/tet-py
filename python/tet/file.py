@@ -15,7 +15,7 @@ from typing import Any, Literal, cast, overload
 import numpy as np
 
 import tet._native as _native
-from tet._catalog import Dataset, axes_for_query, axes_wire, dataset_from_summary
+from tet.catalog import Dataset, axes_for_query, axes_wire, dataset_from_summary
 from tet._core.docstrings import _RAISE_FILE_QUERY, reduce_doc
 from tet._core.errors import (
     UnknownDatasetError,

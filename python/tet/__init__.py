@@ -12,7 +12,7 @@ from os import PathLike
 import numpy as np
 
 import tet._native as _native
-from tet._catalog import Dataset
+from tet.catalog import Dataset
 from tet._core.errors import UnknownAxisError, UnknownDatasetError
 from tet.file import TetFile
 from tet._io import SpillReadResult, TetWriter, write_dataset
