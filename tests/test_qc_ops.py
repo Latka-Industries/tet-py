@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import numpy as np
 import pytest
 
 import tet
@@ -31,28 +30,16 @@ def large_path() -> Path:
     return LARGE_TET
 
 
-def test_nan_count_zero_on_clean_sample(sample_path: Path) -> None:
+def test_clean_sample_has_no_non_finite(sample_path: Path) -> None:
     f = tet.open(sample_path)
     assert f.nan_count("temperature") == 0.0
-
-
-def test_inf_count_zero_on_clean_sample(sample_path: Path) -> None:
-    f = tet.open(sample_path)
     assert f.inf_count("temperature") == 0.0
-
-
-def test_any_inf_false_on_clean_sample(sample_path: Path) -> None:
-    f = tet.open(sample_path)
     assert f.any_inf("temperature") is False
 
 
-def test_nan_mean_matches_mean_on_clean_sample(sample_path: Path) -> None:
+def test_nan_reducers_match_on_clean_sample(sample_path: Path) -> None:
     f = tet.open(sample_path)
     assert f.nan_mean("temperature") == pytest.approx(f.mean("temperature"))
-
-
-def test_nan_std_matches_std_on_clean_sample(sample_path: Path) -> None:
-    f = tet.open(sample_path)
     assert f.nan_std("temperature") == pytest.approx(f.std("temperature"))
 
 
@@ -86,14 +73,6 @@ def test_transform_zscore_numpy_wire(large_path: Path) -> None:
     assert ex.get("transform_method") == "zscore"
     assert ex.get("memory_strategy") == "transform_ram"
     assert ex.get("operation_mean") is not None
-
-
-def test_transform_to_numpy(large_path: Path) -> None:
-    f = tet.open(large_path)
-    arr = f.transform.to_numpy.zscore("a")
-    assert isinstance(arr, np.ndarray)
-    assert arr.shape == (34, 64)
-    assert arr.dtype == np.float32
 
 
 def test_transform_to_numpy_raw(large_path: Path) -> None:

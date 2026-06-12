@@ -10,7 +10,12 @@ import numpy as np
 
 from tet._query import QueryResult
 from tet._dtype import WIRE_DTYPE_TAG_V1
-from tet._spill import infer_spill_dtype_tag, load_spill_array, logical_shape_from_raw
+from tet._spill import (
+    infer_spill_dtype_tag,
+    load_spill_array,
+    logical_shape_from_raw,
+    normalize_path,
+)
 
 if TYPE_CHECKING:
     from tet._file import TetFile
@@ -180,7 +185,7 @@ class SpillTransformResult(TransformResult):
             else WIRE_DTYPE_TAG_V1["f32"],
         )
         return cls(
-            path=Path(spill_path),
+            path=normalize_path(spill_path),
             byte_len=int(byte_len) if byte_len is not None else None,
             **TransformResult._base_fields(
                 query,
@@ -277,7 +282,7 @@ class SidecarTransformResult(TransformResult):
         execution = query.execution if isinstance(query.execution, dict) else {}
         # Engine publishes sidecar path as sidecar_path or spill_f32_path on wire.
         sidecar = execution.get("sidecar_path") or execution.get("spill_f32_path")
-        path = Path(sidecar) if isinstance(sidecar, str) and sidecar else None
+        path = normalize_path(sidecar) if isinstance(sidecar, str) and sidecar else None
         return cls(
             path=path,
             **TransformResult._base_fields(

@@ -24,6 +24,16 @@ _SPILL_PATH_KEYS: tuple[tuple[str, str | None], ...] = (
 )
 
 
+def normalize_path(path: str | PathLike[str]) -> Path:
+    """Resolve engine-returned paths to a stable absolute form.
+
+    Tetration on Windows may return extended-length paths (``\\\\?\\...`` or
+    ``//?/...``). Callers expect ordinary ``Path.resolve()`` paths without
+    the prefix.
+    """
+    return Path(path).expanduser().resolve()
+
+
 def resolve_spill_path(path: str | PathLike[str], tet_path: Path | str) -> Path:
     """Resolve a spill or sidecar path for tetration allowlist rules.
 
@@ -71,7 +81,10 @@ def spill_path_from_execution(execution: dict[str, Any]) -> tuple[Path, int | No
         raw_path = execution.get(path_key)
         if isinstance(raw_path, str) and raw_path:
             byte_len = execution.get(bytes_key) if bytes_key else None
-            return Path(raw_path), int(byte_len) if byte_len is not None else None
+            return (
+                normalize_path(raw_path),
+                int(byte_len) if byte_len is not None else None,
+            )
     raise ValueError("execution missing spill_f32_path or spill_f64_path")
 
 
