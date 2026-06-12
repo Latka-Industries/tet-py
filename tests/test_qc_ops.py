@@ -1,4 +1,4 @@
-"""QC ops (nan_count, nan_mean, transform, …) vs tetration fixtures."""
+"""QC ops (nan_count, nan_mean, transform, …)."""
 
 from __future__ import annotations
 
@@ -10,24 +10,6 @@ import tet
 from tet import QueryResult, TransformWrite, build_query
 from tet._query import transform_op
 from tet._transform import write_to_wire
-
-TETRATION_ROOT = Path(__file__).resolve().parents[2] / "tetration"
-SAMPLE_TET = TETRATION_ROOT / "fixtures" / "small" / "tet" / "sample.tet"
-LARGE_TET = TETRATION_ROOT / "fixtures" / "small" / "tet" / "large.tet"
-
-
-@pytest.fixture(scope="module")
-def sample_path() -> Path:
-    if not SAMPLE_TET.is_file():
-        pytest.skip(f"missing fixture: {SAMPLE_TET}")
-    return SAMPLE_TET
-
-
-@pytest.fixture(scope="module")
-def large_path() -> Path:
-    if not LARGE_TET.is_file():
-        pytest.skip(f"missing fixture: {LARGE_TET}")
-    return LARGE_TET
 
 
 def test_clean_sample_has_no_non_finite(sample_path: Path) -> None:

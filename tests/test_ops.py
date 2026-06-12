@@ -9,16 +9,6 @@ import pytest
 import tet
 from tet import QueryResult
 
-TETRATION_ROOT = Path(__file__).resolve().parents[2] / "tetration"
-SAMPLE_TET = TETRATION_ROOT / "fixtures" / "small" / "tet" / "sample.tet"
-
-
-@pytest.fixture(scope="module")
-def sample_path() -> Path:
-    if not SAMPLE_TET.is_file():
-        pytest.skip(f"missing fixture (clone tetration next to tet-py): {SAMPLE_TET}")
-    return SAMPLE_TET
-
 
 def test_min_max_on_sample(sample_path: Path) -> None:
     f = tet.open(sample_path)
