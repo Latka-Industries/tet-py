@@ -6,8 +6,11 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import Any
 
+import numpy as np
+
 from tet._core.errors import check_query_response
 from tet._native import TetError
+from tet._query.preview import preview_from_response, preview_lists_from_execution
 
 def _op_fields(
     name: str,
@@ -110,6 +113,8 @@ class QueryResult:
         Axis labels for matrix rows/columns.
     histogram_counts, histogram_edges : list or None
         Histogram op outputs.
+    preview : numpy.ndarray or None
+        Capped raw sample values (1-D; dtype matches catalog) when ``preview=N`` was passed.
     raw : dict
         Full wire JSON from the engine.
 
@@ -150,6 +155,33 @@ class QueryResult:
         if self.reduced is not None:
             return self.reduced
         raise TetError("query result has no scalar or reduced value")
+
+    @property
+    def preview_samples(self) -> list[float] | None:
+        """Capped ``execution.*_preview`` list when the engine included samples."""
+        values, _ = preview_lists_from_execution(self.execution)
+        return values
+
+    @property
+    def preview_truncated(self) -> bool:
+        """Whether ``preview_samples`` was truncated to the preview cap."""
+        _, truncated = preview_lists_from_execution(self.execution)
+        return truncated
+
+    @property
+    def preview(self) -> np.ndarray | None:
+        """Capped raw payload samples as a 1-D ``numpy.ndarray``.
+
+        Populated when the query was executed with ``preview=N`` (parity with
+        ``tet query -x --preview N``). Row-major logical order; length ≤ ``N``.
+        Dtype follows ``catalog.dtype`` when present, else ``float64``.
+
+        Returns
+        -------
+        numpy.ndarray or None
+            1-D preview array, or ``None`` when no preview was requested or returned.
+        """
+        return preview_from_response(self.raw)
 
     @classmethod
     def from_response(

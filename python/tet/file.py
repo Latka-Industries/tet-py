@@ -282,12 +282,22 @@ class TetFile:
         return self.summary()
 
     @overload
-    def query(self, query: Any, *, raw: Literal[True]) -> dict[str, Any]: ...
+    def query(
+        self, query: Any, *, preview: int | None = None, raw: Literal[True]
+    ) -> dict[str, Any]: ...
 
     @overload
-    def query(self, query: Any, *, raw: Literal[False]) -> QueryResult: ...
+    def query(
+        self, query: Any, *, preview: int | None = None, raw: Literal[False]
+    ) -> QueryResult: ...
 
-    def query(self, query: Any, *, raw: bool = True) -> dict[str, Any] | QueryResult:
+    def query(
+        self,
+        query: Any,
+        *,
+        preview: int | None = None,
+        raw: bool = True,
+    ) -> dict[str, Any] | QueryResult:
         f"""Execute a query document (``tet query -t file.tet -x``).
 
         Parameters
@@ -295,6 +305,8 @@ class TetFile:
         query : dict or str
             Query document (dict) or JSON string. Must include ``"dataset"`` and one op key
             (e.g. ``"mean": []``) unless planning only via :meth:`plan_only`.
+        preview : int, optional
+            Cap for ``execution.*_preview`` sample arrays (parity with ``tet query --preview``).
         raw : bool, default True
             If True, return the full ``QueryResponse`` dict. If False, return :class:`~tet.QueryResult`.
 
@@ -302,6 +314,7 @@ class TetFile:
         -------
         dict or QueryResult
             Wire JSON when ``raw=True``; parsed result with ``.scalar`` / ``.reduced`` when ``raw=False``.
+            Use :attr:`~tet.QueryResult.preview` on results when ``preview`` is set.
 
         Raises
         ------
@@ -310,7 +323,7 @@ class TetFile:
         doc = coerce_query_doc(query)
         if "dataset" in doc and isinstance(doc["dataset"], str):
             self._require_dataset(doc["dataset"])
-        out = _parse_json_response(self._inner.query(doc))
+        out = _parse_json_response(self._inner.query(doc, preview_max=preview))
         check_query_response(
             out,
             path=self.path,
@@ -331,6 +344,7 @@ class TetFile:
         query: Any,
         *,
         device: str | None = None,
+        preview: int | None = None,
         raw: Literal[True] = True,
     ) -> dict[str, Any]: ...
 
@@ -340,6 +354,7 @@ class TetFile:
         query: Any,
         *,
         device: str | None = None,
+        preview: int | None = None,
         raw: Literal[False],
     ) -> QueryResult: ...
 
@@ -348,9 +363,10 @@ class TetFile:
         query: Any,
         *,
         device: str | None = None,
+        preview: int | None = None,
         raw: bool = True,
     ) -> dict[str, Any] | QueryResult:
-        f"""Like :meth:`query`, with optional ``execution.device``.
+        f"""Like :meth:`query`, with optional ``execution.device`` and preview cap.
 
         Parameters
         ----------
@@ -358,6 +374,8 @@ class TetFile:
             Query document (see :meth:`query`).
         device : str, optional
             Written to ``execution.device`` before execute (e.g. ``"cpu"``).
+        preview : int, optional
+            Cap for ``execution.*_preview`` samples; use :attr:`~tet.QueryResult.preview`.
         raw : bool, default True
             Same as :meth:`query`.
 
@@ -376,14 +394,15 @@ class TetFile:
             execution["device"] = device
             doc = {**doc, "execution": execution}
         if raw:
-            return self.query(doc, raw=True)
-        return self.query(doc, raw=False)
+            return self.query(doc, preview=preview, raw=True)
+        return self.query(doc, preview=preview, raw=False)
 
     def execute(
         self,
         query: Any,
         *,
         device: str | None = None,
+        preview: int | None = None,
         raw: bool = False,
         plan: bool = False,
     ) -> dict[str, Any] | QueryResult:
@@ -394,6 +413,8 @@ class TetFile:
         query : dict or str
             Query document (see :meth:`query`).
         device : str, optional
+            Passed to :meth:`query_execute` when executing.
+        preview : int, optional
             Passed to :meth:`query_execute` when executing.
         raw : bool, default False
             If True, return wire ``dict``; if False, return :class:`~tet.QueryResult`.
@@ -414,8 +435,12 @@ class TetFile:
                 return self.plan_only(query, raw=True)
             return self.plan_only(query, raw=False)
         if raw:
-            return self.query_execute(query, device=device, raw=True)
-        return self.query_execute(query, device=device, raw=False)
+            return self.query_execute(
+                query, device=device, preview=preview, raw=True
+            )
+        return self.query_execute(
+            query, device=device, preview=preview, raw=False
+        )
 
     @overload
     def plan_only(self, query: Any, *, raw: Literal[True]) -> dict[str, Any]: ...
@@ -476,16 +501,23 @@ class TetFile:
         doc: dict[str, Any],
         *,
         device: str | None = None,
+        preview: int | None = None,
         raw: bool = False,
         scalar_op: str | None = None,
     ) -> float | list[float] | dict[str, Any] | QueryResult:
         """Run a built document; unwrap scalars when ``scalar_op`` is set."""
         if raw:
             if device is not None:
-                return self.query_execute(doc, device=device, raw=True)
-            return self.query(doc, raw=True)
-        result = self.query_execute(doc, device=device, raw=False)
+                return self.query_execute(
+                    doc, device=device, preview=preview, raw=True
+                )
+            return self.query(doc, preview=preview, raw=True)
+        result = self.query_execute(
+            doc, device=device, preview=preview, raw=False
+        )
         assert isinstance(result, QueryResult)
+        if preview is not None:
+            return result
         if scalar_op and result.scalar is not None:
             return result.scalar
         if scalar_op in ("histogram", "covariance", "correlation", "transform"):
@@ -502,6 +534,7 @@ class TetFile:
         *,
         axis: int | str | None = None,
         device: str | None = None,
+        preview: int | None = None,
         raw: bool = False,
     ) -> float | int | bool | dict[str, Any] | QueryResult:
         """Shared path for ``mean`` / ``sum`` / ``min`` / … list-style reductions."""
@@ -509,11 +542,15 @@ class TetFile:
         doc = reduction_doc(dataset, op, wire_axes)
         if raw:
             if device is not None:
-                return self.query_execute(doc, device=device, raw=True)
-            return self.query(doc, raw=True)
-        result = self.query_execute(doc, device=device, raw=False)
+                return self.query_execute(
+                    doc, device=device, preview=preview, raw=True
+                )
+            return self.query(doc, preview=preview, raw=True)
+        result = self.query_execute(
+            doc, device=device, preview=preview, raw=False
+        )
         assert isinstance(result, QueryResult)
-        if wire_axes:
+        if wire_axes or preview is not None:
             return result
         if result.scalar is None:
             raise TetError(f"missing scalar for op {op!r}")
@@ -526,10 +563,11 @@ class TetFile:
         *,
         axis: int | str | None = None,
         device: str | None = None,
+        preview: int | None = None,
         raw: bool = False,
     ) -> float | dict[str, Any] | QueryResult:
         """Mean over ``dataset`` (all axes, or ``axis`` / ``axes``)."""
-        return self._reduce("mean", dataset, axes, axis=axis, device=device, raw=raw)
+        return self._reduce("mean", dataset, axes, axis=axis, device=device, preview=preview, raw=raw)
 
     def sum(
         self,
@@ -538,10 +576,11 @@ class TetFile:
         *,
         axis: int | str | None = None,
         device: str | None = None,
+        preview: int | None = None,
         raw: bool = False,
     ) -> float | dict[str, Any] | QueryResult:
         """Sum over ``dataset`` (same axis rules as :meth:`mean`)."""
-        return self._reduce("sum", dataset, axes, axis=axis, device=device, raw=raw)
+        return self._reduce("sum", dataset, axes, axis=axis, device=device, preview=preview, raw=raw)
 
     def min(
         self,
@@ -550,10 +589,11 @@ class TetFile:
         *,
         axis: int | str | None = None,
         device: str | None = None,
+        preview: int | None = None,
         raw: bool = False,
     ) -> float | dict[str, Any] | QueryResult:
         """Minimum over `dataset`."""
-        return self._reduce("min", dataset, axes, axis=axis, device=device, raw=raw)
+        return self._reduce("min", dataset, axes, axis=axis, device=device, preview=preview, raw=raw)
 
     def max(
         self,
@@ -562,10 +602,11 @@ class TetFile:
         *,
         axis: int | str | None = None,
         device: str | None = None,
+        preview: int | None = None,
         raw: bool = False,
     ) -> float | dict[str, Any] | QueryResult:
         """Maximum over `dataset`."""
-        return self._reduce("max", dataset, axes, axis=axis, device=device, raw=raw)
+        return self._reduce("max", dataset, axes, axis=axis, device=device, preview=preview, raw=raw)
 
     def count(
         self,
@@ -574,10 +615,11 @@ class TetFile:
         *,
         axis: int | str | None = None,
         device: str | None = None,
+        preview: int | None = None,
         raw: bool = False,
     ) -> float | int | dict[str, Any] | QueryResult:
         """Element count over `dataset`."""
-        return self._reduce("count", dataset, axes, axis=axis, device=device, raw=raw)
+        return self._reduce("count", dataset, axes, axis=axis, device=device, preview=preview, raw=raw)
 
     def numel(
         self,
@@ -586,6 +628,7 @@ class TetFile:
         *,
         axis: int | str | None = None,
         device: str | None = None,
+        preview: int | None = None,
         raw: bool = False,
     ) -> float | int | dict[str, Any] | QueryResult:
         f"""Number of elements (NumPy ``size`` semantics).
@@ -607,7 +650,7 @@ class TetFile:
         ------
         {_RAISE_FILE_QUERY}
         """
-        return self.count(dataset, axes, axis=axis, device=device, raw=raw)
+        return self.count(dataset, axes, axis=axis, device=device, preview=preview, raw=raw)
 
     def std(
         self,
@@ -616,10 +659,11 @@ class TetFile:
         *,
         axis: int | str | None = None,
         device: str | None = None,
+        preview: int | None = None,
         raw: bool = False,
     ) -> float | dict[str, Any] | QueryResult:
         """Population std (ddof=0) over `dataset`."""
-        return self._reduce("std", dataset, axes, axis=axis, device=device, raw=raw)
+        return self._reduce("std", dataset, axes, axis=axis, device=device, preview=preview, raw=raw)
 
     def var(
         self,
@@ -628,10 +672,11 @@ class TetFile:
         *,
         axis: int | str | None = None,
         device: str | None = None,
+        preview: int | None = None,
         raw: bool = False,
     ) -> float | dict[str, Any] | QueryResult:
         """Population variance (ddof=0) over `dataset`."""
-        return self._reduce("var", dataset, axes, axis=axis, device=device, raw=raw)
+        return self._reduce("var", dataset, axes, axis=axis, device=device, preview=preview, raw=raw)
 
     def product(
         self,
@@ -640,10 +685,11 @@ class TetFile:
         *,
         axis: int | str | None = None,
         device: str | None = None,
+        preview: int | None = None,
         raw: bool = False,
     ) -> float | dict[str, Any] | QueryResult:
         """Product over `dataset`."""
-        return self._reduce("product", dataset, axes, axis=axis, device=device, raw=raw)
+        return self._reduce("product", dataset, axes, axis=axis, device=device, preview=preview, raw=raw)
 
     def norm_l1(
         self,
@@ -652,10 +698,11 @@ class TetFile:
         *,
         axis: int | str | None = None,
         device: str | None = None,
+        preview: int | None = None,
         raw: bool = False,
     ) -> float | dict[str, Any] | QueryResult:
         """L1 norm over `dataset`."""
-        return self._reduce("norm_l1", dataset, axes, axis=axis, device=device, raw=raw)
+        return self._reduce("norm_l1", dataset, axes, axis=axis, device=device, preview=preview, raw=raw)
 
     def norm_l2(
         self,
@@ -664,10 +711,11 @@ class TetFile:
         *,
         axis: int | str | None = None,
         device: str | None = None,
+        preview: int | None = None,
         raw: bool = False,
     ) -> float | dict[str, Any] | QueryResult:
         """L2 norm (√(sum of squares)) over `dataset`."""
-        return self._reduce("norm_l2", dataset, axes, axis=axis, device=device, raw=raw)
+        return self._reduce("norm_l2", dataset, axes, axis=axis, device=device, preview=preview, raw=raw)
 
     def median(
         self,
@@ -676,10 +724,11 @@ class TetFile:
         *,
         axis: int | str | None = None,
         device: str | None = None,
+        preview: int | None = None,
         raw: bool = False,
     ) -> float | dict[str, Any] | QueryResult:
         """Median over `dataset` (materialize path in engine)."""
-        return self._reduce("median", dataset, axes, axis=axis, device=device, raw=raw)
+        return self._reduce("median", dataset, axes, axis=axis, device=device, preview=preview, raw=raw)
 
     def all_finite(
         self,
@@ -688,13 +737,14 @@ class TetFile:
         *,
         axis: int | str | None = None,
         device: str | None = None,
+        preview: int | None = None,
         raw: bool = False,
     ) -> bool | dict[str, Any] | QueryResult:
         """True if all selected elements are finite."""
         return cast(
             bool,
             self._reduce(
-                "all_finite", dataset, axes, axis=axis, device=device, raw=raw
+                "all_finite", dataset, axes, axis=axis, device=device, preview=preview, raw=raw
             ),
         )
 
@@ -705,12 +755,13 @@ class TetFile:
         *,
         axis: int | str | None = None,
         device: str | None = None,
+        preview: int | None = None,
         raw: bool = False,
     ) -> bool | dict[str, Any] | QueryResult:
         """True if any selected element is NaN."""
         return cast(
             bool,
-            self._reduce("any_nan", dataset, axes, axis=axis, device=device, raw=raw),
+            self._reduce("any_nan", dataset, axes, axis=axis, device=device, preview=preview, raw=raw),
         )
 
     def arg_min(
@@ -720,12 +771,13 @@ class TetFile:
         *,
         axis: int | str | None = None,
         device: str | None = None,
+        preview: int | None = None,
         raw: bool = False,
     ) -> int | dict[str, Any] | QueryResult:
         """Flat index of minimum (scalar reduction over all axes)."""
         return cast(
             int,
-            self._reduce("arg_min", dataset, axes, axis=axis, device=device, raw=raw),
+            self._reduce("arg_min", dataset, axes, axis=axis, device=device, preview=preview, raw=raw),
         )
 
     def arg_max(
@@ -735,12 +787,13 @@ class TetFile:
         *,
         axis: int | str | None = None,
         device: str | None = None,
+        preview: int | None = None,
         raw: bool = False,
     ) -> int | dict[str, Any] | QueryResult:
         """Flat index of maximum (scalar reduction over all axes)."""
         return cast(
             int,
-            self._reduce("arg_max", dataset, axes, axis=axis, device=device, raw=raw),
+            self._reduce("arg_max", dataset, axes, axis=axis, device=device, preview=preview, raw=raw),
         )
 
     def any_inf(
@@ -750,12 +803,13 @@ class TetFile:
         *,
         axis: int | str | None = None,
         device: str | None = None,
+        preview: int | None = None,
         raw: bool = False,
     ) -> bool | dict[str, Any] | QueryResult:
         """True if any selected element is ±infinity."""
         return cast(
             bool,
-            self._reduce("any_inf", dataset, axes, axis=axis, device=device, raw=raw),
+            self._reduce("any_inf", dataset, axes, axis=axis, device=device, preview=preview, raw=raw),
         )
 
     def nan_count(
@@ -765,13 +819,14 @@ class TetFile:
         *,
         axis: int | str | None = None,
         device: str | None = None,
+        preview: int | None = None,
         raw: bool = False,
     ) -> int | float | dict[str, Any] | QueryResult:
         """Count of NaN elements in the selection."""
         return cast(
             int | float,
             self._reduce(
-                "nan_count", dataset, axes, axis=axis, device=device, raw=raw
+                "nan_count", dataset, axes, axis=axis, device=device, preview=preview, raw=raw
             ),
         )
 
@@ -782,13 +837,14 @@ class TetFile:
         *,
         axis: int | str | None = None,
         device: str | None = None,
+        preview: int | None = None,
         raw: bool = False,
     ) -> int | float | dict[str, Any] | QueryResult:
         """Count of ±infinity elements in the selection."""
         return cast(
             int | float,
             self._reduce(
-                "inf_count", dataset, axes, axis=axis, device=device, raw=raw
+                "inf_count", dataset, axes, axis=axis, device=device, preview=preview, raw=raw
             ),
         )
 
@@ -800,6 +856,7 @@ class TetFile:
         axis: int | str | None = None,
         fill: float | None = None,
         device: str | None = None,
+        preview: int | None = None,
         raw: bool = False,
     ) -> int | float | dict[str, Any] | QueryResult:
         f"""Count of fill-missing values (``_FillValue`` / attrs when ``fill`` omitted).
@@ -827,7 +884,7 @@ class TetFile:
         ds = self.dataset(dataset)
         wire = null_count_op(ds, axes, axis=axis, fill=fill, path=str(self.path))
         doc = build_query(dataset, null_count=wire)
-        out = self._execute_doc(doc, device=device, raw=raw, scalar_op="null_count")
+        out = self._execute_doc(doc, device=device, preview=preview, raw=raw, scalar_op="null_count")
         assert isinstance(out, (int, float, dict, QueryResult))
         return out
 
@@ -838,11 +895,12 @@ class TetFile:
         *,
         axis: int | str | None = None,
         device: str | None = None,
+        preview: int | None = None,
         raw: bool = False,
     ) -> float | dict[str, Any] | QueryResult:
         """Mean over finite elements (NaN-skipping)."""
         return self._reduce(
-            "nan_mean", dataset, axes, axis=axis, device=device, raw=raw
+            "nan_mean", dataset, axes, axis=axis, device=device, preview=preview, raw=raw
         )
 
     def nan_std(
@@ -852,11 +910,12 @@ class TetFile:
         *,
         axis: int | str | None = None,
         device: str | None = None,
+        preview: int | None = None,
         raw: bool = False,
     ) -> float | dict[str, Any] | QueryResult:
         """Population std over finite elements (NaN-skipping, ddof=0)."""
         return self._reduce(
-            "nan_std", dataset, axes, axis=axis, device=device, raw=raw
+            "nan_std", dataset, axes, axis=axis, device=device, preview=preview, raw=raw
         )
 
     def quantile(
@@ -868,6 +927,7 @@ class TetFile:
         axis: int | str | None = None,
         selection: Sequence[Mapping[str, Any]] | None = None,
         device: str | None = None,
+        preview: int | None = None,
         raw: bool = False,
     ) -> float | dict[str, Any] | QueryResult:
         f"""Quantile over a dataset.
@@ -902,7 +962,7 @@ class TetFile:
                 ds, q, axes, axis=axis, path=str(self.path)
             ),
         )
-        out = self._execute_doc(doc, device=device, raw=raw, scalar_op="quantile")
+        out = self._execute_doc(doc, device=device, preview=preview, raw=raw, scalar_op="quantile")
         assert isinstance(out, (float, dict, QueryResult))
         return out
 
@@ -917,6 +977,7 @@ class TetFile:
         max: float | None = None,
         selection: Sequence[Mapping[str, Any]] | None = None,
         device: str | None = None,
+        preview: int | None = None,
         raw: bool = False,
     ) -> QueryResult | dict[str, Any]:
         f"""Histogram over a dataset.
@@ -949,7 +1010,7 @@ class TetFile:
                 ds, bins, axes, axis=axis, min=min, max=max, path=str(self.path)
             ),
         )
-        out = self._execute_doc(doc, device=device, raw=raw, scalar_op="histogram")
+        out = self._execute_doc(doc, device=device, preview=preview, raw=raw, scalar_op="histogram")
         assert isinstance(out, (dict, QueryResult))
         return out
 
@@ -960,6 +1021,7 @@ class TetFile:
         *,
         selection: Sequence[Mapping[str, Any]] | None = None,
         device: str | None = None,
+        preview: int | None = None,
         raw: bool = False,
     ) -> QueryResult | dict[str, Any]:
         f"""Population covariance matrix (rank-2 dataset).
@@ -988,7 +1050,7 @@ class TetFile:
             selection=selection,
             covariance=covariance_op(ds, axis, path=str(self.path)),
         )
-        out = self._execute_doc(doc, device=device, raw=raw, scalar_op="covariance")
+        out = self._execute_doc(doc, device=device, preview=preview, raw=raw, scalar_op="covariance")
         assert isinstance(out, (dict, QueryResult))
         return out
 
@@ -999,6 +1061,7 @@ class TetFile:
         *,
         selection: Sequence[Mapping[str, Any]] | None = None,
         device: str | None = None,
+        preview: int | None = None,
         raw: bool = False,
     ) -> QueryResult | dict[str, Any]:
         f"""Pearson correlation matrix (rank-2 dataset).
@@ -1028,7 +1091,7 @@ class TetFile:
             correlation=correlation_op(ds, axis, path=str(self.path)),
         )
         out = self._execute_doc(
-            doc, device=device, raw=raw, scalar_op="correlation"
+            doc, device=device, preview=preview, raw=raw, scalar_op="correlation"
         )
         assert isinstance(out, (dict, QueryResult))
         return out
