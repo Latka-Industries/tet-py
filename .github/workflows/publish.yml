@@ -106,8 +106,9 @@ jobs:
 
       - name: Install linux x86_64 wheel
         run: |
-          uv pip install --system dist/*manylinux*x86_64*.whl
-          python -c "import tet; print('tet-py', tet.__version__, 'tetration', tet.core_version())"
+          uv venv /tmp/tet-smoke
+          uv pip install --python /tmp/tet-smoke/bin/python dist/*manylinux*x86_64*.whl
+          /tmp/tet-smoke/bin/python -c "import tet; print('tet-py', tet.__version__, 'tetration', tet.core_version())"
 
   publish:
     name: Upload to PyPI
