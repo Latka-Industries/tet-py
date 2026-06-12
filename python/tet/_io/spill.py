@@ -15,7 +15,7 @@ from typing import Any
 
 import numpy as np
 
-from tet._dtype import WIRE_DTYPE_TAG_V1, numpy_dtype_from_tag
+from tet._core.dtype import WIRE_DTYPE_TAG_V1, numpy_dtype_from_tag
 
 # execution keys checked in order (transform/read spill may use f32 or f64 path).
 _SPILL_PATH_KEYS: tuple[tuple[str, str | None], ...] = (
@@ -129,7 +129,7 @@ def load_spill_array(
         Logical tensor shape. When omitted, uses ``catalog.shape`` from ``raw``
         or returns a 1-D array sized from ``byte_len`` / file size.
     dtype_tag : int
-        Catalog wire dtype tag (see :data:`~tet._dtype.WIRE_DTYPE_TAG_V1`).
+        Catalog wire dtype tag (see :data:`~tet._core.dtype.WIRE_DTYPE_TAG_V1`).
     byte_len : int, optional
         Expected byte length from execution metadata (sanity check for 1-D load).
     raw : dict, optional

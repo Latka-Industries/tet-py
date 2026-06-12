@@ -16,17 +16,17 @@ import numpy as np
 
 import tet._native as _native
 from tet._catalog import Dataset, axes_for_query, axes_wire, dataset_from_summary
-from tet._errors import (
+from tet._core.docstrings import _RAISE_FILE_QUERY, reduce_doc
+from tet._core.errors import (
     UnknownDatasetError,
     check_query_response,
     coerce_query_doc,
 )
+from tet._io.numpy import read_numpy_array, read_spill_array
+from tet._io.spill import SpillReadResult
 from tet._native import TetError
 from tet._query import QueryResult, reduction_doc
-from tet._docstrings import _RAISE_FILE_QUERY, reduce_doc
-from tet._numpy import read_numpy_array, read_spill_array
-from tet._spill import SpillReadResult
-from tet._query_doc import (
+from tet._query.doc import (
     build_query,
     correlation_op,
     covariance_op,

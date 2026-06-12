@@ -9,7 +9,7 @@ from collections.abc import Mapping, Sequence
 from typing import Any, cast
 
 from tet._catalog import Dataset, axes_for_query, axes_wire
-from tet._query import REDUCTION_OPS, reduction_doc
+from tet._query.result import REDUCTION_OPS, reduction_doc
 
 # Single-op keys accepted on the query document wire (subset; see tetration query_engine.md).
 QUERY_OP_KEYS: frozenset[str] = frozenset(REDUCTION_OPS) | frozenset(

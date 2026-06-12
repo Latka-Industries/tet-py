@@ -36,7 +36,7 @@ def _beside(path: Path, name: str) -> Path:
 def test_normalize_path_strips_windows_extended_prefix() -> None:
     import os
 
-    from tet._spill import normalize_path
+    from tet._io.spill import normalize_path
 
     if os.name != "nt":
         pytest.skip("Windows only")

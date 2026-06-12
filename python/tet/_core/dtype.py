@@ -2,7 +2,7 @@
 
 Spill files and ``read_numpy`` materialize row-major **little-endian** bytes.
 This module maps catalog ``dtype`` integers to matching NumPy dtypes for
-:func:`~tet._spill.load_spill_array` and type checking.
+:func:`~tet._io.spill.load_spill_array` and type checking.
 """
 
 from __future__ import annotations

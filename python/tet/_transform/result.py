@@ -8,17 +8,17 @@ from typing import TYPE_CHECKING, Any
 
 import numpy as np
 
-from tet._query import QueryResult
-from tet._dtype import WIRE_DTYPE_TAG_V1
-from tet._spill import (
+from tet._core.dtype import WIRE_DTYPE_TAG_V1
+from tet._io.spill import (
     infer_spill_dtype_tag,
     load_spill_array,
     logical_shape_from_raw,
     normalize_path,
 )
+from tet._query.result import QueryResult
 
 if TYPE_CHECKING:
-    from tet._file import TetFile
+    from tet.file import TetFile
 
 
 @dataclass(frozen=True, slots=True)
@@ -259,7 +259,7 @@ class SidecarTransformResult(TransformResult):
         OSError, CatalogError
             See :func:`tet.open`.
         """
-        from tet._file import TetFile
+        from tet.file import TetFile
 
         if self.path is None:
             raise ValueError("sidecar path not set in transform execution")
