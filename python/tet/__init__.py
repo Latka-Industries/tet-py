@@ -24,6 +24,7 @@ from tet._query_doc import (
     full_selection,
     selection_slices,
 )
+from tet._spill import SpillReadResult
 from tet._writer import TetWriter, write_dataset
 from tet._transform import TransformWrite
 from tet._transform_result import (
@@ -89,6 +90,7 @@ __all__ = [
     "QueryResult",
     "REDUCTION_OPS",
     "SidecarTransformResult",
+    "SpillReadResult",
     "SpillTransformResult",
     "TransformResult",
     "TransformStats",

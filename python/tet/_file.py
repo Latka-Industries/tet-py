@@ -24,7 +24,8 @@ from tet._errors import (
 from tet._native import TetError
 from tet._query import QueryResult, reduction_doc
 from tet._docstrings import _RAISE_FILE_QUERY, reduce_doc
-from tet._numpy import read_numpy_array
+from tet._numpy import read_numpy_array, read_spill_array
+from tet._spill import SpillReadResult
 from tet._query_doc import (
     build_query,
     correlation_op,
@@ -228,10 +229,42 @@ class TetFile:
         TetError
             Decode failures or unsupported dtype. Large selections are not
             preflight-checked against ``memory_budget_bytes`` — slice the
-            selection or use transform ``to_spill`` / wire spill export when
-            RAM is tight (see ``docs/operations.md`` § Memory budget).
+            selection or use :meth:`~tet.TetFile.read_spill` when RAM is tight
+            (see ``docs/operations.md`` § Memory budget).
         """
         return read_numpy_array(self, dataset, selection=selection)
+
+    def read_spill(
+        self,
+        dataset: str,
+        path: str | PathLike[str] | None = None,
+        *,
+        selection: Sequence[Mapping[str, Any]] | None = None,
+    ) -> SpillReadResult:
+        """Spill a dataset selection to a dense row-major LE file.
+
+        Parameters
+        ----------
+        dataset : str
+            Catalog dataset name.
+        path : str or path-like, optional
+            Output path; omit for an engine temp file under the allowlist.
+            Relative paths resolve beside this ``.tet`` file.
+        selection : sequence of dict, optional
+            Per-axis slices (see :func:`~tet.selection_slices`). Omit for the full tensor.
+
+        Returns
+        -------
+        SpillReadResult
+            Spill metadata; call :meth:`~tet.SpillReadResult.to_numpy` to load
+            into NumPy without holding the full buffer during export.
+
+        Raises
+        ------
+        TetError
+            Validation or spill failures (path allowlist, decode errors).
+        """
+        return read_spill_array(self, dataset, path, selection=selection)
 
     def summary(self) -> dict[str, Any]:
         """Return the full catalog summary for this file.

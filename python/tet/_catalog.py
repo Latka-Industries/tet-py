@@ -95,6 +95,10 @@ class Dataset:
     ) -> np.ndarray:
         """Materialize this dataset (or a sub-selection) as ``numpy.ndarray``.
 
+        Uses the in-RAM export path (same as :meth:`~tet.TetFile.read_numpy`).
+        For selections larger than available RAM, prefer
+        :meth:`~tet.TetFile.read_spill` on ``file``.
+
         Parameters
         ----------
         file : TetFile

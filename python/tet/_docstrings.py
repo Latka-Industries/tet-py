@@ -42,7 +42,59 @@ UnknownDatasetError, UnknownAxisError, TetError
     See :meth:`~tet.TetFile.query`.\
 """
 
+_NUMPY_READ_IO = """\
+Parameters
+----------
+dataset : str
+    Catalog dataset name.
+selection : sequence of dict, optional
+    Per-axis slices (see :func:`~tet.selection_slices`). Omit for the full tensor.
+
+Returns
+-------
+numpy.ndarray
+    Row-major array with shape matching the logical selection.
+
+Raises
+------
+UnknownDatasetError, TetError
+    Missing dataset, decode failure, or unsupported dtype.\
+"""
+
+_SPILL_READ_IO = """\
+Parameters
+----------
+dataset : str
+    Catalog dataset name.
+path : str or path-like, optional
+    Output path; omit for an engine temp file under the allowlist.
+    Relative paths resolve beside the source ``.tet`` file.
+selection : sequence of dict, optional
+    Per-axis slices (see :func:`~tet.selection_slices`). Omit for the full tensor.
+
+Returns
+-------
+SpillReadResult
+    Spill metadata (``.path``, ``.shape``, ``.memory_strategy``); call
+    :meth:`~tet.SpillReadResult.to_numpy` to load.
+
+Raises
+------
+UnknownDatasetError, TetError
+    Validation, path allowlist, or spill export failures.\
+"""
+
 
 def reduce_doc(summary: str) -> str:
     """One-line summary plus shared reduction I/O block."""
     return f"{summary.strip()}\n\n{_REDUCE_IO}"
+
+
+def numpy_read_doc(summary: str) -> str:
+    """One-line summary plus shared in-RAM materialize I/O block."""
+    return f"{summary.strip()}\n\n{_NUMPY_READ_IO}"
+
+
+def spill_read_doc(summary: str) -> str:
+    """One-line summary plus shared selection spill I/O block."""
+    return f"{summary.strip()}\n\n{_SPILL_READ_IO}"
