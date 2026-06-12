@@ -9,7 +9,7 @@ raw bytes — not ``.tet`` layout. Use :func:`load_spill_array` or result
 from __future__ import annotations
 
 from dataclasses import dataclass
-from os import PathLike
+from os import PathLike, fsdecode, name as os_name
 from pathlib import Path
 from typing import Any
 
@@ -28,10 +28,16 @@ def normalize_path(path: str | PathLike[str]) -> Path:
     """Resolve engine-returned paths to a stable absolute form.
 
     Tetration on Windows may return extended-length paths (``\\\\?\\...`` or
-    ``//?/...``). Callers expect ordinary ``Path.resolve()`` paths without
-    the prefix.
+    ``//?/...``). ``Path.resolve()`` keeps that prefix; strip it first so
+    callers see ordinary drive paths.
     """
-    return Path(path).expanduser().resolve()
+    text = fsdecode(path)
+    if os_name == "nt":
+        if text.startswith("//?/"):
+            text = text[4:]
+        elif text.startswith("\\\\?\\"):
+            text = text[4:]
+    return Path(text).expanduser().resolve()
 
 
 def resolve_spill_path(path: str | PathLike[str], tet_path: Path | str) -> Path:
