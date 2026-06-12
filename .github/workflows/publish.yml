@@ -5,15 +5,6 @@ on:
     tags:
       - "v*"
   workflow_dispatch:
-    inputs:
-      target:
-        description: PyPI index
-        required: true
-        default: testpypi
-        type: choice
-        options:
-          - testpypi
-          - pypi
 
 env:
   CARGO_INCREMENTAL: 0
@@ -139,27 +130,7 @@ jobs:
           name: sdist
           path: dist
 
-      - name: Publish (tag → PyPI)
-        if: github.event_name == 'push'
-        uses: PyO3/maturin-action@v1
-        with:
-          command: upload
-          args: --non-interactive --skip-existing dist/*
-        env:
-          MATURIN_PYPI_TOKEN: ${{ secrets.PYPI_API_TOKEN }}
-
-      - name: Publish (manual TestPyPI)
-        if: github.event_name == 'workflow_dispatch' && inputs.target == 'testpypi'
-        uses: PyO3/maturin-action@v1
-        with:
-          command: upload
-          args: --non-interactive --skip-existing --repository testpypi dist/*
-        env:
-          MATURIN_PYPI_TOKEN: ${{ secrets.TEST_PYPI_API_TOKEN }}
-
-      - name: Publish (manual PyPI)
-        if: github.event_name == 'workflow_dispatch' && inputs.target == 'pypi'
-        uses: PyO3/maturin-action@v1
+      - uses: PyO3/maturin-action@v1
         with:
           command: upload
           args: --non-interactive --skip-existing dist/*
