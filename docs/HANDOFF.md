@@ -31,7 +31,7 @@ Agent/onboarding doc for **`~/Code/tet-py`**. Parent project: **[tetration](http
 ### Not done
 
 - Phase 3 **convert** extras (`tet.convert`) — [#10](https://github.com/Latka-Industries/tet-py/issues/10) / THI-22
-- Phase 2 tail: preview ndarray ([#7](https://github.com/Latka-Industries/tet-py/issues/7) / THI-24), `read_numpy` preflight ([#9](https://github.com/Latka-Industries/tet-py/issues/9) / THI-23), integer write dtypes ([#8](https://github.com/Latka-Industries/tet-py/issues/8) / THI-26)
+- Phase 2 tail: ~~preview ndarray~~ (THI-24); `read_numpy` preflight ([#9](https://github.com/Latka-Industries/tet-py/issues/9) / THI-23), integer write dtypes ([#8](https://github.com/Latka-Industries/tet-py/issues/8) / THI-26)
 - Zero-copy mmap → NumPy ([#11](https://github.com/Latka-Industries/tet-py/issues/11) / THI-21)
 
 ## Issue tracking
@@ -41,14 +41,13 @@ Agent/onboarding doc for **`~/Code/tet-py`**. Parent project: **[tetration](http
 | Linear | Topic                                                          |
 | ------ | -------------------------------------------------------------- |
 | THI-22 | `tet.convert` orchestration (Phase 3)                          |
-| THI-24 | Preview ndarray from `query_execute`                           |
 | THI-23 | `read_numpy` memory budget preflight                           |
 | THI-26 | `write_dataset` integer dtypes                                 |
 | THI-21 | Zero-copy mmap → NumPy                                         |
 | THI-60 | Upstream: publish `f64_row_major` / `row_major` in catalog API |
 | THI-61 | Upstream: unify transform sidecar with `TetWriterSession`      |
 
-**Shipped (Linear done):** THI-20 (PyPI), THI-25 (fixtures), THI-27 (docs).
+**Shipped (Linear done):** THI-20 (PyPI), THI-24 (preview ndarray), THI-25 (fixtures), THI-27 (docs).
 
 **tetration (upstream):** [#19](https://github.com/Latka-Industries/tetration/issues/19) selection preflight · [#20](https://github.com/Latka-Industries/tetration/issues/20) f16/u32/u64 export
 
@@ -82,7 +81,7 @@ Layout: `python/tet/` subpackages (`_core`, `_query`, `_io`, `_transform`); `nat
 Goal: parity with common `tet query -t … -x` embedder paths without hand-rolled JSON everywhere.
 
 - [x] `query()` → return **`dict`** (parsed from Rust JSON in Python facade)
-- [x] `query_execute(doc, device=...)` sets `execution.device` (preview still via raw doc / future Rust knob)
+- [x] `query_execute(doc, device=..., preview=N)` sets `execution.device` and preview cap; `QueryResult.preview_ndarray()`
 - [x] `info()` / `summary()` → **`dict`** (parsed `summary_json()`; parity with `tet info --json`)
 - [x] `plan_only(doc)` → plan without execution (`ExecuteQueryOptions::plan_only`)
 - [x] `mean` / `sum` / `min` / `max` / `std` / `var` / `count` / `product` / `norm_l1` / `norm_l2` / `median` / `all_finite` / `any_nan` / `arg_min` / `arg_max` — helpers over `query()`; `axis=` by index or `dim_names`
@@ -105,7 +104,7 @@ Goal: make **NumPy** the primary Python array surface for `.tet` (read and write
 - [x] `transform.to_sidecar.*` → sidecar `.tet` + :meth:`~tet.SidecarTransformResult.to_numpy`
 - [x] `read_spill` selection export + :meth:`~tet.SpillReadResult.to_numpy`
 - [x] PyO3 wrapper over `materialize_read_plan_*` / `materialize_query_transform_ram`; copy into NumPy (v1)
-- [ ] Optional: `query_execute(..., preview=N)` → `ndarray` for capped `execution.*_preview` samples — [#7](https://github.com/Latka-Industries/tet-py/issues/7)
+- [x] `query_execute(..., preview=N)` → `QueryResult.preview_ndarray()` for capped `execution.*_preview` samples — [#7](https://github.com/Latka-Industries/tet-py/issues/7) / THI-24
 - [x] Document RAM budget: `to_numpy` vs `to_spill`, `read_numpy` slice/spill notes ([`operations.md`](operations.md#memory-budget))
 - [ ] `read_numpy` budget preflight (blocked on [tetration#19](https://github.com/Latka-Industries/tetration/issues/19)) — [#9](https://github.com/Latka-Industries/tet-py/issues/9)
 - [ ] Integer `write_dataset` dtypes beyond f32/f64 — [#8](https://github.com/Latka-Industries/tet-py/issues/8)
@@ -178,7 +177,7 @@ User code  →  import tet  →  python/tet/__init__.py
 
 | Horizon    | Target                                                                                      |
 | ---------- | ------------------------------------------------------------------------------------------- |
-| **Short**  | ~~PyPI 0.1.0~~ done; Phase 2 tail (preview, preflight), docs hygiene                        |
+| **Short**  | ~~PyPI 0.1.0~~ done; ~~preview~~ (THI-24); Phase 2 tail (preflight), docs hygiene         |
 | **Medium** | `tet.convert` extras; upstream THI-60/61 writer/sidecar cleanup                             |
 | **Long**   | Zero-copy read; object-store paths (tetration Phase 12); optional C ABI for non-Python only |
 

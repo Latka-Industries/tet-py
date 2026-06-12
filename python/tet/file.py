@@ -282,12 +282,22 @@ class TetFile:
         return self.summary()
 
     @overload
-    def query(self, query: Any, *, raw: Literal[True]) -> dict[str, Any]: ...
+    def query(
+        self, query: Any, *, preview: int | None = None, raw: Literal[True]
+    ) -> dict[str, Any]: ...
 
     @overload
-    def query(self, query: Any, *, raw: Literal[False]) -> QueryResult: ...
+    def query(
+        self, query: Any, *, preview: int | None = None, raw: Literal[False]
+    ) -> QueryResult: ...
 
-    def query(self, query: Any, *, raw: bool = True) -> dict[str, Any] | QueryResult:
+    def query(
+        self,
+        query: Any,
+        *,
+        preview: int | None = None,
+        raw: bool = True,
+    ) -> dict[str, Any] | QueryResult:
         f"""Execute a query document (``tet query -t file.tet -x``).
 
         Parameters
@@ -295,6 +305,8 @@ class TetFile:
         query : dict or str
             Query document (dict) or JSON string. Must include ``"dataset"`` and one op key
             (e.g. ``"mean": []``) unless planning only via :meth:`plan_only`.
+        preview : int, optional
+            Cap for ``execution.*_preview`` sample arrays (parity with ``tet query --preview``).
         raw : bool, default True
             If True, return the full ``QueryResponse`` dict. If False, return :class:`~tet.QueryResult`.
 
@@ -302,6 +314,7 @@ class TetFile:
         -------
         dict or QueryResult
             Wire JSON when ``raw=True``; parsed result with ``.scalar`` / ``.reduced`` when ``raw=False``.
+            Use :meth:`~tet.QueryResult.preview_ndarray` on results when ``preview`` is set.
 
         Raises
         ------
@@ -310,7 +323,7 @@ class TetFile:
         doc = coerce_query_doc(query)
         if "dataset" in doc and isinstance(doc["dataset"], str):
             self._require_dataset(doc["dataset"])
-        out = _parse_json_response(self._inner.query(doc))
+        out = _parse_json_response(self._inner.query(doc, preview_max=preview))
         check_query_response(
             out,
             path=self.path,
@@ -331,6 +344,7 @@ class TetFile:
         query: Any,
         *,
         device: str | None = None,
+        preview: int | None = None,
         raw: Literal[True] = True,
     ) -> dict[str, Any]: ...
 
@@ -340,6 +354,7 @@ class TetFile:
         query: Any,
         *,
         device: str | None = None,
+        preview: int | None = None,
         raw: Literal[False],
     ) -> QueryResult: ...
 
@@ -348,9 +363,10 @@ class TetFile:
         query: Any,
         *,
         device: str | None = None,
+        preview: int | None = None,
         raw: bool = True,
     ) -> dict[str, Any] | QueryResult:
-        f"""Like :meth:`query`, with optional ``execution.device``.
+        f"""Like :meth:`query`, with optional ``execution.device`` and preview cap.
 
         Parameters
         ----------
@@ -358,6 +374,8 @@ class TetFile:
             Query document (see :meth:`query`).
         device : str, optional
             Written to ``execution.device`` before execute (e.g. ``"cpu"``).
+        preview : int, optional
+            Cap for ``execution.*_preview`` samples; use :meth:`~tet.QueryResult.preview_ndarray`.
         raw : bool, default True
             Same as :meth:`query`.
 
@@ -376,14 +394,15 @@ class TetFile:
             execution["device"] = device
             doc = {**doc, "execution": execution}
         if raw:
-            return self.query(doc, raw=True)
-        return self.query(doc, raw=False)
+            return self.query(doc, preview=preview, raw=True)
+        return self.query(doc, preview=preview, raw=False)
 
     def execute(
         self,
         query: Any,
         *,
         device: str | None = None,
+        preview: int | None = None,
         raw: bool = False,
         plan: bool = False,
     ) -> dict[str, Any] | QueryResult:
@@ -394,6 +413,8 @@ class TetFile:
         query : dict or str
             Query document (see :meth:`query`).
         device : str, optional
+            Passed to :meth:`query_execute` when executing.
+        preview : int, optional
             Passed to :meth:`query_execute` when executing.
         raw : bool, default False
             If True, return wire ``dict``; if False, return :class:`~tet.QueryResult`.
@@ -414,8 +435,12 @@ class TetFile:
                 return self.plan_only(query, raw=True)
             return self.plan_only(query, raw=False)
         if raw:
-            return self.query_execute(query, device=device, raw=True)
-        return self.query_execute(query, device=device, raw=False)
+            return self.query_execute(
+                query, device=device, preview=preview, raw=True
+            )
+        return self.query_execute(
+            query, device=device, preview=preview, raw=False
+        )
 
     @overload
     def plan_only(self, query: Any, *, raw: Literal[True]) -> dict[str, Any]: ...

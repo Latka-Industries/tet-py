@@ -484,7 +484,8 @@ build_query("a", selection=sel, min=[1])
 | ---------------------------------------------------------------- | ----------------------------------------------- |
 | `f.query(doc)`                                                   | `tet query -x` (execute, JSON string)           |
 | `f.plan_only(doc)`                                               | `tet query` without `-x`                        |
-| `f.query_execute(doc, device=...)`                               | execute with `execution.device`                 |
+| `f.query_execute(doc, device=..., preview=N)`                    | execute with `execution.device` and preview cap |
+| `QueryResult.preview_ndarray()`                                  | capped `execution.*_preview` → `ndarray`        |
 | `f.execute(doc, plan=True)`                                      | plan only                                       |
 | `f.read_numpy(dataset, selection=...)`                           | Materialize selection → `numpy.ndarray`         |
 | `f.read_spill(dataset, path=...)`                                | Spill selection → :class:`~tet.SpillReadResult` |

@@ -141,8 +141,20 @@ impl PyTetFile {
     /// # Errors
     ///
     /// [`TetError`] on parse/validation/execution errors; [`CatalogError`] when the error is catalog-related.
-    fn query(&self, py: Python<'_>, query: &Bound<'_, PyAny>) -> PyResult<String> {
-        self.execute_query_json(py, query, ExecuteQueryOptions::execute_no_preview())
+    #[pyo3(signature = (query, preview_max=None))]
+    fn query(
+        &self,
+        py: Python<'_>,
+        query: &Bound<'_, PyAny>,
+        preview_max: Option<usize>,
+    ) -> PyResult<String> {
+        let options = match preview_max {
+            Some(n) => ExecuteQueryOptions {
+                preview_max: Some(n),
+            },
+            None => ExecuteQueryOptions::execute_no_preview(),
+        };
+        self.execute_query_json(py, query, options)
     }
 
     /// Plan a query without executing (parity with `tet query` without `-x`).

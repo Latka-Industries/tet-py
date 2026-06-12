@@ -1,14 +1,13 @@
 # Changelog
 
-All notable changes to **tet-py** are documented here. The project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
-
-Install: `pip install tet-py` · Import: `import tet` · Docs: [tetration-docs/python](https://latka-industries.github.io/tetration-docs/python/)
-
 ## [Unreleased]
+
+### Added
+
+- `query_execute(..., preview=N)` and `QueryResult.preview_ndarray()` — capped `execution.*_preview` samples as `numpy.ndarray` (parity with `tet query --preview`) ([#7](https://github.com/Latka-Industries/tet-py/issues/7))
 
 ### Planned
 
-- Preview ndarray from `query_execute` ([#7](https://github.com/Latka-Industries/tet-py/issues/7))
 - `read_numpy` memory budget preflight ([#9](https://github.com/Latka-Industries/tet-py/issues/9))
 - Integer `write_dataset` dtypes ([#8](https://github.com/Latka-Industries/tet-py/issues/8))
 - `tet.convert` optional extras ([#10](https://github.com/Latka-Industries/tet-py/issues/10))

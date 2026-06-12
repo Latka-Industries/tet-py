@@ -15,6 +15,7 @@ from tet._io.spill import (
     logical_shape_from_raw,
     normalize_path,
 )
+from tet._query.preview import preview_lists_from_execution
 from tet._query.result import QueryResult
 
 if TYPE_CHECKING:
@@ -108,7 +109,7 @@ class NumpyTransformResult(TransformResult):
     ) -> NumpyTransformResult:
         """Parse a transform execute response for the ``ram`` sink."""
         execution = query.execution if isinstance(query.execution, dict) else {}
-        preview, truncated = _preview_from_execution(execution)
+        preview, truncated = preview_lists_from_execution(execution)
         return cls(
             preview=preview,
             preview_truncated=truncated,
@@ -371,16 +372,3 @@ def _infer_sidecar_dataset(sidecar: TetFile, method: str) -> str:
     )
 
 
-def _preview_from_execution(
-    execution: dict[str, Any],
-) -> tuple[list[float] | None, bool]:
-    """Extract capped ``f32_preview`` / ``f64_preview`` lists from execution."""
-    for key, trunc_key in (
-        ("f32_preview", "f32_preview_truncated"),
-        ("f64_preview", "f64_preview_truncated"),
-    ):
-        values = execution.get(key)
-        if isinstance(values, list):
-            truncated = bool(execution.get(trunc_key, False))
-            return [float(x) for x in values], truncated
-    return None, False

@@ -6,8 +6,11 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import Any
 
+import numpy as np
+
 from tet._core.errors import check_query_response
 from tet._native import TetError
+from tet._query.preview import preview_lists_from_execution, preview_ndarray_from_response
 
 def _op_fields(
     name: str,
@@ -150,6 +153,22 @@ class QueryResult:
         if self.reduced is not None:
             return self.reduced
         raise TetError("query result has no scalar or reduced value")
+
+    @property
+    def preview_samples(self) -> list[float] | None:
+        """Capped ``execution.*_preview`` list when the engine included samples."""
+        values, _ = preview_lists_from_execution(self.execution)
+        return values
+
+    @property
+    def preview_truncated(self) -> bool:
+        """Whether ``preview_samples`` was truncated to the preview cap."""
+        _, truncated = preview_lists_from_execution(self.execution)
+        return truncated
+
+    def preview_ndarray(self) -> np.ndarray | None:
+        """First N logical row-major values as a 1-D ``numpy.ndarray``, or ``None``."""
+        return preview_ndarray_from_response(self.raw)
 
     @classmethod
     def from_response(
