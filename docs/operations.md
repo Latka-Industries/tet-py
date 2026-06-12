@@ -1,20 +1,19 @@
 # Query operations
 
-`tet` exposes one operation per query document. Prefer **methods on** [`TetFile`](../python/tet/_file.py) (`f.mean(...)`, `f.quantile(...)`, `f.transform.to_numpy.zscore(...)`, …); use [`build_query`](../python/tet/_query_doc.py) when you need the wire dict explicitly.
+`tet` exposes one operation per query document. Prefer **methods on** [`TetFile`](../python/tet/file.py) (`f.mean(...)`, `f.quantile(...)`, `f.transform.to_numpy.zscore(...)`, …); use [`build_query`](../python/tet/_query/doc.py) when you need the wire dict explicitly.
 
-Fixtures in examples (sibling **tetration** repo):
+Fixtures in examples (`tests/fixtures/` in this repo):
 
-| File                            | Dataset         | Shape      | Notes                             |
-| ------------------------------- | --------------- | ---------- | --------------------------------- |
-| `fixtures/small/tet/large.tet`  | `"a"`           | `(34, 64)` | Reductions, quantile, histogram   |
-| `fixtures/small/tet/sample.tet` | `"temperature"` | `(2, 3)`   | Covariance / correlation (rank 2) |
+| File | Dataset | Shape | Notes |
+| ---- | ------- | ----- | ----- |
+| `tests/fixtures/large.tet` | `"a"` | `(34, 64)` | Reductions, quantile, histogram |
+| `tests/fixtures/sample.tet` | `"temperature"` | `(2, 3)` | Covariance / correlation (rank 2) |
 
 ```python
 import tet
 from tet import axis_slice, build_query, selection_slices
 
-path = "../tetration/fixtures/small/tet/large.tet"
-f = tet.open(path)
+f = tet.open("tests/fixtures/large.tet")
 ```
 
 ## Axis rules
@@ -24,7 +23,7 @@ f = tet.open(path)
 | Call                       | Effect                                                                   |
 | -------------------------- | ------------------------------------------------------------------------ |
 | `f.mean("a")`              | Reduce **all** axes → scalar                                             |
-| `f.mean("a", axis=0)`      | Reduce axis 0 → [`QueryResult`](../python/tet/_query.py) with `.reduced` |
+| `f.mean("a", axis=0)`      | Reduce axis 0 → [`QueryResult`](../python/tet/_query/result.py) with `.reduced` |
 | `f.mean("a", axes=[0, 1])` | Reduce multiple axes                                                     |
 | `f.mean("a", axis="time")` | Resolve name from footer `dim_names` when present                        |
 
@@ -238,7 +237,7 @@ Rank-**2** datasets only. **`axis`** is the **observation** dimension; variables
 Use `sample.tet` / `"temperature"` in examples:
 
 ```python
-f = tet.open("../tetration/fixtures/small/tet/sample.tet")
+f = tet.open("tests/fixtures/sample.tet")
 
 r = f.covariance("temperature", axis=1)
 r.matrix_order                        # e.g. 2
@@ -447,7 +446,7 @@ Roundtrip: :func:`write_dataset` → :meth:`TetFile.read_numpy` → reductions.
 
 ## Selection and `build_query`
 
-Slice one dimension with [`axis_slice`](../python/tet/_query_doc.py) (`start` inclusive, `stop` exclusive):
+Slice one dimension with [`axis_slice`](../python/tet/_query/doc.py) (`start` inclusive, `stop` exclusive):
 
 ```python
 axis_slice(0, 4)                        # rows 0..3
