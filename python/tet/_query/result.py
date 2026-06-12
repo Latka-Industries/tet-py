@@ -6,7 +6,7 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import Any
 
-from tet._errors import check_query_response
+from tet._core.errors import check_query_response
 from tet._native import TetError
 
 def _op_fields(
