@@ -1,5 +1,6 @@
 # tet-py
 
+[![PyPI](https://img.shields.io/pypi/v/tet-py.svg)](https://pypi.org/project/tet-py/)
 [![uv](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/uv/main/assets/badge/v0.json)](https://docs.astral.sh/uv/)
 [![CI](https://github.com/Latka-Industries/tet-py/actions/workflows/ci.yml/badge.svg)](https://github.com/Latka-Industries/tet-py/actions/workflows/ci.yml)
 [![Python](https://img.shields.io/badge/python-3.11%2B-blue)](https://www.python.org/downloads/)
@@ -7,7 +8,7 @@
 
 Python bindings for [**Tetration**](https://github.com/Latka-Industries/tetration) — mmap-friendly `.tet` tensor files and the JSON/TOML query engine.
 
-| Install (PyPI) | `pip install tet-py` _(when published)_ |
+| Install (PyPI) | [`pip install tet-py`](https://pypi.org/project/tet-py/) |
 | Import | `import tet` |
 | Rust core | [`tetration`](https://crates.io/crates/tetration) on crates.io |
 | CLI (no Python) | [`tet`](https://github.com/Latka-Industries/tetration) binary from the main repo |
@@ -48,6 +49,8 @@ with tet.open("../tetration/fixtures/small/tet/large.tet") as f:
     z = f.transform.to_numpy.zscore("a")            # transform → ram
     spill = f.transform.to_spill.zscore("a", path="a_zscore.bin")
     same = spill.to_numpy()                         # transform → spill → ndarray
+    side = f.transform.to_sidecar.zscore("a", path="a_zscore.tet")
+    same = side.to_numpy(f)                         # transform → sidecar .tet → ndarray
 ```
 
 **Operations reference** (every op with examples): [**docs/operations.md**](docs/operations.md)
