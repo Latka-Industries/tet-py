@@ -9,17 +9,6 @@ import pytest
 import tet
 from tet import axis_slice, build_query, selection_slices
 
-TETRATION_ROOT = Path(__file__).resolve().parents[2] / "tetration"
-LARGE_TET = TETRATION_ROOT / "fixtures" / "small" / "tet" / "large.tet"
-SAMPLE_TET = TETRATION_ROOT / "fixtures" / "small" / "tet" / "sample.tet"
-
-
-@pytest.fixture(scope="module")
-def large_path() -> Path:
-    if not LARGE_TET.is_file():
-        pytest.skip(f"missing fixture: {LARGE_TET}")
-    return LARGE_TET
-
 
 def test_build_query_selection() -> None:
     doc = build_query(
@@ -56,9 +45,8 @@ def test_histogram_on_large(large_path: Path) -> None:
     assert len(r.histogram_counts) == 4
 
 
-@pytest.mark.skipif(not SAMPLE_TET.is_file(), reason="sample.tet missing")
-def test_covariance_on_sample() -> None:
-    f = tet.open(SAMPLE_TET)
+def test_covariance_on_sample(sample_path: Path) -> None:
+    f = tet.open(sample_path)
     # temperature is 2×3; observation axis 1 → 2×2 covariance order
     r = f.covariance("temperature", axis=1)
     assert r.matrix_order == 2

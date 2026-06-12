@@ -15,6 +15,4 @@ crate-type = ["cdylib"]
 pyo3 = { version = "0.28.3", features = ["extension-module", "abi3-py311"] }
 numpy = "0.28.0"
 serde_json = "1.0"
-# Release builds use crates.io. For local tetration main, add `.cargo/config.toml`
-# (see `.cargo/config.toml.example`).
 tetration = { version = "0.1.9", default-features = false }

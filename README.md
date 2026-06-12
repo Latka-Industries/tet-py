@@ -24,14 +24,7 @@ Do not `pip install tetration` — that PyPI name is an unrelated math package. 
 - Rust **1.95+** ([`.mise.toml`](.mise.toml) pins `rust = "1.95"`, or install matching [rustup](https://rustup.rs/) toolchain; `native/Cargo.toml` sets `rust-version = "1.95"`)
 - [maturin](https://www.maturin.rs/) (`pip install maturin` or `uv tool install maturin`)
 
-### Development (local `tetration` checkout)
-
-This repo expects the Rust library next to it by default:
-
-```text
-~/Code/tetration   # main crate
-~/Code/tet-py      # this repo (`native/Cargo.toml` path dependency)
-```
+### Development
 
 ```bash
 cd ~/Code/tet-py
@@ -42,7 +35,7 @@ uv run pytest -q
 uv run mypy python/tet
 ```
 
-(`uv sync` runs an editable build via maturin; `maturin develop` refreshes the native extension after Rust changes.)
+Links **tetration 0.1.9** from crates.io. Test fixtures live in `tests/fixtures/`.
 
 ### Example
 

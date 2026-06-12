@@ -1,8 +1,0 @@
-# Copy to `.cargo/config.toml` (gitignored) to build against a sibling tetration checkout.
-#
-#   cp .cargo/config.toml.example .cargo/config.toml
-#
-# Requires `../tetration` next to this repo (same layout as CI).
-
-[patch.crates-io]
-tetration = { path = "../tetration" }

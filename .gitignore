@@ -9,7 +9,6 @@ target/
 native/target/
 *.egg-info/
 .DS_Store
-.cargo/config.toml
 
 # maturin / PyO3 build artifacts (use `mise run develop` locally)
 python/tet/_native*.so

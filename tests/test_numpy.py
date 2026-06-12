@@ -10,24 +10,6 @@ import pytest
 import tet
 from tet import SpillTransformResult
 
-TETRATION_ROOT = Path(__file__).resolve().parents[2] / "tetration"
-SAMPLE_TET = TETRATION_ROOT / "fixtures" / "small" / "tet" / "sample.tet"
-LARGE_TET = TETRATION_ROOT / "fixtures" / "small" / "tet" / "large.tet"
-
-
-@pytest.fixture(scope="module")
-def sample_path() -> Path:
-    if not SAMPLE_TET.is_file():
-        pytest.skip(f"missing fixture: {SAMPLE_TET}")
-    return SAMPLE_TET
-
-
-@pytest.fixture(scope="module")
-def large_path() -> Path:
-    if not LARGE_TET.is_file():
-        pytest.skip(f"missing fixture: {LARGE_TET}")
-    return LARGE_TET
-
 
 def _beside(path: Path, name: str) -> Path:
     return path.parent / name

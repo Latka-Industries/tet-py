@@ -14,13 +14,6 @@ jobs:
         os: [ubuntu-latest, macos-latest, windows-latest]
     steps:
       - uses: actions/checkout@v4
-        with:
-          path: tet-py
-
-      - uses: actions/checkout@v4
-        with:
-          repository: Latka-Industries/tetration
-          path: tetration
 
       - uses: dtolnay/rust-toolchain@stable
         with:
@@ -28,13 +21,7 @@ jobs:
 
       - uses: astral-sh/setup-uv@v5
 
-      - name: Patch sibling tetration (dev)
-        working-directory: tet-py
-        shell: bash
-        run: cp .cargo/config.toml.example .cargo/config.toml
-
       - name: Test
-        working-directory: tet-py
         run: |
           uv sync --extra dev
           uv run maturin develop
