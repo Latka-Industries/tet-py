@@ -12,27 +12,27 @@ from os import PathLike
 import numpy as np
 
 import tet._native as _native
-from tet._catalog import Dataset
-from tet._errors import UnknownAxisError, UnknownDatasetError
-from tet._file import TetFile
+from tet.catalog import Dataset
+from tet._core.errors import UnknownAxisError, UnknownDatasetError
+from tet.file import TetFile
+from tet._io import SpillReadResult, TetWriter, write_dataset
 from tet._native import CatalogError, TetError, core_version
-from tet._query import REDUCTION_OPS, QueryResult
-from tet._query_doc import (
+from tet._query import (
     QUERY_OP_KEYS,
+    REDUCTION_OPS,
+    QueryResult,
     axis_slice,
     build_query,
     full_selection,
     selection_slices,
 )
-from tet._spill import SpillReadResult
-from tet._writer import TetWriter, write_dataset
-from tet._transform import TransformWrite
-from tet._transform_result import (
+from tet._transform import (
     NumpyTransformResult,
     SidecarTransformResult,
     SpillTransformResult,
     TransformResult,
     TransformStats,
+    TransformWrite,
 )
 
 __version__: str = _native.__version__

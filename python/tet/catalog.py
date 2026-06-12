@@ -9,10 +9,10 @@ from typing import TYPE_CHECKING, Any
 
 import numpy as np
 
-from tet._errors import UnknownAxisError
+from tet._core.errors import UnknownAxisError
 
 if TYPE_CHECKING:
-    from tet._file import TetFile
+    from tet.file import TetFile
 
 
 @dataclass(frozen=True, slots=True)
@@ -110,7 +110,7 @@ class Dataset:
         -------
         numpy.ndarray
         """
-        from tet._numpy import read_numpy_array
+        from tet._io.numpy import read_numpy_array
 
         return read_numpy_array(file, self.name, selection=selection)
 

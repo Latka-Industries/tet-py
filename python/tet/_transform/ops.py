@@ -9,17 +9,17 @@ from typing import TYPE_CHECKING, Any, Callable, cast
 
 import numpy as np
 
-from tet._query import QueryResult
-from tet._query_doc import build_query, transform_op
-from tet._spill import resolve_spill_path
-from tet._transform_result import (
+from tet._io.spill import resolve_spill_path
+from tet._query.doc import build_query, transform_op
+from tet._query.result import QueryResult
+from tet._transform.result import (
     SidecarTransformResult,
     SpillTransformResult,
     parse_transform_result,
 )
 
 if TYPE_CHECKING:
-    from tet._file import TetFile
+    from tet.file import TetFile
 
 TransformResult = SpillTransformResult | SidecarTransformResult
 NumpyTransformFn = Callable[..., np.ndarray | dict[str, Any]]
@@ -199,7 +199,7 @@ def _logical_shape_from_query(
     fallback: tuple[int, ...],
 ) -> tuple[int, ...]:
     """Prefer ``catalog.shape`` from execute response over catalog record shape."""
-    from tet._spill import logical_shape_from_raw
+    from tet._io.spill import logical_shape_from_raw
 
     return logical_shape_from_raw(out.raw) or fallback
 

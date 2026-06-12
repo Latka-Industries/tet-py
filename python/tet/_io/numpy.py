@@ -15,9 +15,9 @@ from typing import TYPE_CHECKING, Any
 
 import numpy as np
 
-from tet._docstrings import numpy_read_doc, spill_read_doc
-from tet._query_doc import build_selection_query
-from tet._spill import (
+from tet._core.docstrings import numpy_read_doc, spill_read_doc
+from tet._query.doc import build_selection_query
+from tet._io.spill import (
     SpillReadResult,
     infer_spill_dtype_tag,
     logical_shape_from_raw,
@@ -26,7 +26,7 @@ from tet._spill import (
 )
 
 if TYPE_CHECKING:
-    from tet._file import TetFile
+    from tet.file import TetFile
 
 
 def read_numpy_array(

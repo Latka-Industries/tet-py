@@ -8,7 +8,7 @@ import pytest
 
 import tet
 from tet import QueryResult, TransformWrite, build_query
-from tet._query_doc import transform_op
+from tet._query import transform_op
 from tet._transform import write_to_wire
 
 TETRATION_ROOT = Path(__file__).resolve().parents[2] / "tetration"
