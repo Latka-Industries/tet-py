@@ -27,7 +27,7 @@ Agent/onboarding doc for **`~/Code/tet-py`**. Parent project: **[tetration](http
 - [x] `uv sync --extra dev`, PyO3 **0.28**, **50** pytest tests, mypy on `python/tet`
 - [x] `tet.__version__` (0.1.1 on PyPI), `tet.core_version()` (linked tetration 0.1.9)
 - [x] Query preview: `preview=N` on reducers / `query_execute`; `QueryResult.preview` (THI-24)
-- [x] Docs: [tetration-docs/python](https://latka-industries.github.io/tetration-docs/python/), [CHANGELOG.md](../CHANGELOG.md)
+- [x] Docs: [docs.tetration.sh/python](https://docs.tetration.sh/python/), [CHANGELOG.md](../CHANGELOG.md)
 
 ### Not done
 
@@ -215,4 +215,4 @@ Resolved: Phase 2 three-sink NumPy interchange; PyPI 0.1.0 (THI-20); preview API
 | `CHANGELOG.md`                 | Release notes                                                 |
 | `README.md`                    | User-facing quick start                                       |
 
-When behavior changes, update **README.md**, **CHANGELOG.md**, and this file. User docs: [tetration-docs/python](https://latka-industries.github.io/tetration-docs/python/).
+When behavior changes, update **README.md**, **CHANGELOG.md**, and this file. User docs: [docs.tetration.sh/python](https://docs.tetration.sh/python/).

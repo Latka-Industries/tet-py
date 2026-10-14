@@ -1,6 +1,7 @@
 # tet-py
 
 [![PyPI](https://img.shields.io/pypi/v/tet-py.svg)](https://pypi.org/project/tet-py/)
+[![Docs](https://img.shields.io/badge/docs-docs.tetration.sh-blue)](https://docs.tetration.sh/python/)
 [![uv](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/uv/main/assets/badge/v0.json)](https://docs.astral.sh/uv/)
 [![CI](https://github.com/Latka-Industries/tet-py/actions/workflows/ci.yml/badge.svg)](https://github.com/Latka-Industries/tet-py/actions/workflows/ci.yml)
 [![Python](https://img.shields.io/badge/python-3.11%2B-blue)](https://www.python.org/downloads/)
@@ -110,12 +111,12 @@ tet-py/
 
 ### Docs
 
-- [ ] Keep [tetration-docs/python](https://latka-industries.github.io/tetration-docs/python/) in sync with releases
+- [ ] Keep [docs.tetration.sh/python](https://docs.tetration.sh/python/) in sync with releases
 
 ## Related
 
 - [CHANGELOG.md](CHANGELOG.md) — release notes
-- [tetration-docs — Python](https://latka-industries.github.io/tetration-docs/python/) — install, NumPy sinks, operations
+- [docs.tetration.sh — Python](https://docs.tetration.sh/python/) — install, NumPy sinks, operations
 - [docs/operations.md](docs/operations.md) — query ops (`mean`, `quantile`, …) with examples
 - [docs/README.md](docs/README.md) — doc index
 - [HANDOFF.md](docs/HANDOFF.md) — phases, dev commands, agent notes

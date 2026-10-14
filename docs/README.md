@@ -6,7 +6,7 @@
 | [**HANDOFF.md**](HANDOFF.md) | Phases, dev commands, agent notes |
 | [**CHANGELOG.md**](../CHANGELOG.md) | Release history |
 
-Site docs (broader Tetration + tet-py guides): [tetration-docs/python](https://latka-industries.github.io/tetration-docs/python/)
+Site docs (broader Tetration + tet-py guides): [docs.tetration.sh/python](https://docs.tetration.sh/python/)
 
 Current tet-py release: [**0.1.1**](https://pypi.org/project/tet-py/0.1.1/) on PyPI (query preview API).
 
