@@ -305,8 +305,9 @@ class TetFile:
         Parameters
         ----------
         query : dict or str
-            Query document (dict) or JSON string. Must include ``"dataset"`` and one op key
-            (e.g. ``"mean": []``) unless planning only via :meth:`plan_only`.
+            Query document (dict), JSON string, or TOML string (same Auto detect as
+            ``tet query``). Must include ``dataset`` and one op key unless planning
+            only via :meth:`plan_only`.
         preview : int, optional
             Cap for ``execution.*_preview`` sample arrays (parity with ``tet query --preview``).
         raw : bool, default True
@@ -323,6 +324,14 @@ class TetFile:
         {_RAISE_FILE_QUERY}
         """
         doc = coerce_query_doc(query)
+        if isinstance(doc, str):
+            out = _parse_json_response(self._inner.query(doc, preview_max=preview))
+            check_query_response(out, path=self.path, require_execution=True)
+            if raw:
+                return out
+            return QueryResult.from_response(
+                out, op=None, path=str(self.path), require_execution=False
+            )
         if "dataset" in doc and isinstance(doc["dataset"], str):
             self._require_dataset(doc["dataset"])
         out = _parse_json_response(self._inner.query(doc, preview_max=preview))
@@ -400,12 +409,24 @@ class TetFile:
         ------
         {_RAISE_FILE_QUERY}
         """
-        doc = apply_execution_hints(
-            coerce_query_doc(query),
-            device=device,
-            memory_budget_bytes=memory_budget_bytes,
-            memory_budget_percent=memory_budget_percent,
-        )
+        doc = coerce_query_doc(query)
+        if isinstance(doc, str):
+            if has_execution_hints(
+                device=device,
+                memory_budget_bytes=memory_budget_bytes,
+                memory_budget_percent=memory_budget_percent,
+            ):
+                raise TypeError(
+                    "device=/memory_budget_* require a dict query when the document "
+                    "is TOML text; put [execution] in the TOML or pass a dict"
+                )
+        else:
+            doc = apply_execution_hints(
+                doc,
+                device=device,
+                memory_budget_bytes=memory_budget_bytes,
+                memory_budget_percent=memory_budget_percent,
+            )
         if raw:
             return self.query(doc, preview=preview, raw=True)
         return self.query(doc, preview=preview, raw=False)
@@ -473,7 +494,8 @@ class TetFile:
         Parameters
         ----------
         query : dict or str
-            Document with ``"dataset"`` and optional ``"selection"`` only (no ``mean``/``sum``/…).
+            Document with ``dataset`` and optional ``selection`` only (no op keys);
+            JSON or TOML string accepted.
         raw : bool, default True
             If True, wire ``dict``; if False, :class:`~tet.QueryResult` (typically no ``.scalar``).
 
@@ -487,7 +509,7 @@ class TetFile:
         {_RAISE_FILE_QUERY}
         """
         doc = coerce_query_doc(query)
-        if "dataset" in doc and isinstance(doc["dataset"], str):
+        if isinstance(doc, dict) and "dataset" in doc and isinstance(doc["dataset"], str):
             self._require_dataset(doc["dataset"])
         out = _parse_json_response(self._inner.plan_only(doc))
         check_query_response(out, path=self.path, require_execution=False)

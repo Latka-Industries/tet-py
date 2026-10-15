@@ -70,6 +70,18 @@ def test_execute_memory_budget_bytes(sample_path: Path) -> None:
     assert out["execution"]["memory_budget_bytes"] == 64 * 1024 * 1024
 
 
+def test_execute_toml_query(sample_path: Path) -> None:
+    f = tet.open(sample_path)
+    toml_q = 'dataset = "temperature"\nmean = []\n'
+    r = f.execute(toml_q)
+    assert r.scalar == pytest.approx(3.5)
+    out = f.query(toml_q, raw=True)
+    assert isinstance(out, dict)
+    assert out["execution"]["operation_mean"] == pytest.approx(3.5)
+    json_q = '{"dataset":"temperature","mean":[]}'
+    assert f.execute(json_q).scalar == pytest.approx(3.5)
+
+
 def test_plan_execute(sample_path: Path) -> None:
     f = tet.open(sample_path)
     r = f.execute({"dataset": "temperature"}, plan=True)

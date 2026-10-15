@@ -132,31 +132,35 @@ def check_query_response(
         raise TetError(msg)
 
 
-def coerce_query_doc(query: Any) -> dict[str, Any]:
-    """Parse a query document from Python or JSON text.
+def coerce_query_doc(query: Any) -> dict[str, Any] | str:
+    """Normalize a query document for the Python layer or native Auto parse.
 
     Parameters
     ----------
     query : dict or str
-        Query document mapping, or JSON string.
+        Query document mapping, JSON string (leading ``{``), or TOML string
+        (CLI parity with ``tet query``).
 
     Returns
     -------
-    dict
-        Query document ready for the Rust engine.
+    dict or str
+        Dict for JSON / mapping input; raw TOML text is returned unchanged so
+        the native layer can run ``parse_query_text(..., Auto)``.
 
     Raises
     ------
     TetError
-        If a string is not valid JSON.
+        If a JSON-looking string is not valid JSON.
     TypeError
         If ``query`` is neither dict nor str.
     """
     if isinstance(query, dict):
         return query
     if isinstance(query, str):
-        try:
-            return cast(dict[str, Any], json.loads(query))
-        except json.JSONDecodeError as exc:
-            raise TetError(f"query string is not valid JSON: {exc}") from exc
-    raise TypeError("query must be a dict or JSON string")
+        if query.lstrip().startswith("{"):
+            try:
+                return cast(dict[str, Any], json.loads(query))
+            except json.JSONDecodeError as exc:
+                raise TetError(f"query string is not valid JSON: {exc}") from exc
+        return query
+    raise TypeError("query must be a dict or JSON/TOML string")

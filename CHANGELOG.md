@@ -5,6 +5,7 @@
 ### Added
 
 - `memory_budget_bytes=` / `memory_budget_percent=` on `execute`, `query_execute`, reductions, and transform sinks (THI-454)
+- Query strings accept TOML as well as JSON (CLI Auto parity via `parse_query_text`) (THI-456)
 
 ### Changed
 
