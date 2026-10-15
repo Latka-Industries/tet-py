@@ -12,7 +12,7 @@ UnknownAxisError
 TetError
     Query parse, validation, or execution failure.
 TypeError
-    If ``query`` is neither ``dict`` nor JSON string.\
+    If ``query`` is neither ``dict`` nor JSON/TOML string.\
 """
 
 _REDUCE_IO = """\

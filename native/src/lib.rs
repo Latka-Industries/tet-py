@@ -16,7 +16,8 @@ use pyo3::types::PyAny;
 use tetration::catalog::TetFile as CoreTetFile;
 use tetration::query::{
     execute_query_document, materialize_query_selection, materialize_query_transform_ram,
-    parse_query_json, validate_query, ExecuteQueryOptions, QueryDocument, TetError as QueryError,
+    parse_query_json, parse_query_text, validate_query, ExecuteQueryOptions, QueryDocument,
+    QueryInputFormat, TetError as QueryError,
 };
 
 create_exception!(_native, TetError, PyException, "Query parse, validation, or execution error.");
@@ -42,16 +43,17 @@ pub(crate) fn catalog_err(err: &tetration::catalog::CatalogError) -> PyErr {
 
 /// Parse and validate a query from Python (`str`, `dict`, or other JSON-serializable value).
 ///
-/// Accepts a JSON string, `str`, or any object passed through `json.dumps`.
+/// String input uses [`parse_query_text`] with [`QueryInputFormat::Auto`] (leading `{` → JSON,
+/// else TOML), matching the `tet query` CLI. Dicts and other objects go through `json.dumps`.
 /// Runs `validate_query` before returning.
 fn parse_document(py: Python<'_>, query: &Bound<'_, PyAny>) -> PyResult<QueryDocument> {
     if let Ok(s) = query.extract::<String>() {
-        let doc = parse_query_json(&s).map_err(tet_err)?;
+        let doc = parse_query_text(&s, QueryInputFormat::Auto).map_err(tet_err)?;
         validate_query(&doc).map_err(tet_err)?;
         return Ok(doc);
     }
     if let Ok(s) = query.extract::<&str>() {
-        let doc = parse_query_json(s).map_err(tet_err)?;
+        let doc = parse_query_text(s, QueryInputFormat::Auto).map_err(tet_err)?;
         validate_query(&doc).map_err(tet_err)?;
         return Ok(doc);
     }

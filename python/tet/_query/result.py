@@ -223,6 +223,9 @@ class QueryResult:
         histogram_counts: list[float] | None = None
         histogram_edges: list[float] | None = None
 
+        if op is None:
+            op = _infer_op_from_execution(execution)
+
         if op and op in REDUCTION_OPS:
             scalar_key, reduced_key = REDUCTION_OPS[op]
             if execution.get(scalar_key) is not None:
@@ -267,6 +270,28 @@ class QueryResult:
             histogram_counts=histogram_counts,
             histogram_edges=histogram_edges,
         )
+
+
+def _infer_op_from_execution(execution: dict[str, Any]) -> str | None:
+    """Best-effort op key from response ``execution`` (e.g. TOML queries without a dict)."""
+    for name, (scalar_key, reduced_key) in REDUCTION_OPS.items():
+        if execution.get(scalar_key) is not None or isinstance(
+            execution.get(reduced_key), list
+        ):
+            return name
+    for name, key in _EXTRA_SCALAR_FIELDS.items():
+        if execution.get(key) is not None:
+            return name
+    if execution.get("operation_histogram_counts") is not None or isinstance(
+        execution.get("operation_reduced_histogram_counts"), list
+    ):
+        return "histogram"
+    for name, (mat_key, _) in _MATRIX_FIELDS.items():
+        if execution.get(mat_key) is not None:
+            return name
+    if execution.get("transform_method") is not None:
+        return "transform"
+    return None
 
 
 def scalar_from_response(
