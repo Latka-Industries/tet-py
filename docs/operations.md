@@ -88,9 +88,11 @@ Use **`f.execute(doc)`** (or `f.query(doc)`) for generic documents; default is `
 ```python
 r = f.execute({"dataset": "a", "mean": []})
 r.scalar                                # same as f.mean("a")
+r = f.execute('dataset = "a"\nmean = []\n')  # TOML (CLI Auto parity)
 
 f.execute({"dataset": "a"}, plan=True)  # plan only — no op keys
 f.execute(doc, device="cpu")            # sets execution.device
+f.mean("a", memory_budget_percent=40)   # execution.memory_budget_*
 ```
 
 ---
@@ -513,8 +515,9 @@ build_query("a", selection=sel, min=[1])
 | `SidecarTransformResult.to_numpy(f)`                             | Open sidecar `.tet` → `ndarray`                 |
 | `tet.write_dataset(path, name, array)`                           | Create one-dataset `.tet` from NumPy            |
 | `tet.TetWriter.create(path)`                                     | Buffered multi-dataset writer                   |
+| `tet.convert(src.npy, dst.tet)`                                  | NumPy `.npy`/`.npz` → `.tet` (other formats stubbed) |
 
-`doc` may be a **`dict`** or **JSON string**.
+`doc` may be a **`dict`**, **JSON string**, or **TOML string**.
 
 ```python
 import json

@@ -16,6 +16,7 @@ from tet.catalog import Dataset
 from tet._core.errors import UnknownAxisError, UnknownDatasetError
 from tet.file import TetFile
 from tet._io import SpillReadResult, TetWriter, write_dataset
+from tet.convert import convert
 from tet._native import CatalogError, TetError, core_version
 from tet._query import (
     QUERY_OP_KEYS,
@@ -98,6 +99,7 @@ __all__ = [
     "TransformWrite",
     "axis_slice",
     "build_query",
+    "convert",
     "full_selection",
     "selection_slices",
     "TetError",
