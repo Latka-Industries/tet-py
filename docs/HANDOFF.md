@@ -50,7 +50,7 @@ Agent/onboarding doc for **`~/Code/tet-py`**. Parent project: **[tetration](http
 | THI-21 | Zero-copy mmap → NumPy                                         |
 | THI-61 | Upstream: unify transform sidecar with `TetWriterSession`      |
 
-**Shipped (Linear done):** THI-20 (PyPI), THI-24 (preview ndarray), THI-25 (fixtures), THI-27 (docs), THI-60 (`f64_row_major` / `row_major` in tetration 0.1.10), THI-453–456 (pre-bump), THI-457 (0.1.12 pin), THI-23 (read_numpy preflight). THI-26 (integer write) in flight.
+**Shipped (Linear done):** THI-20 (PyPI), THI-24 (preview ndarray), THI-25 (fixtures), THI-27 (docs), THI-60 (`f64_row_major` / `row_major` in tetration 0.1.10), THI-453–456 (pre-bump), THI-457 (0.1.12 pin), THI-23 (read_numpy preflight), THI-26 (integer/`f16` write).
 
 **tetration (upstream):** THI-16 selection preflight (in **0.1.12**) · THI-15 f16/u32/u64 export (in **0.1.12**)
 
