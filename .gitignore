@@ -15,3 +15,6 @@ python/tet/_native*.so
 python/tet/_native*.pyd
 *.so
 *.pyd
+
+# local UBLX TUI prefs
+.ublx.toml
