@@ -2,12 +2,17 @@
 
 ## [Unreleased]
 
+### Changed
+
+- CI runs `mypy python/tet` after `maturin develop`; workflow triggers on `dev` as well as `main` (THI-453)
+
 ### Planned
 
-- `read_numpy` memory budget preflight ([#9](https://github.com/Latka-Industries/tet-py/issues/9))
-- Integer `write_dataset` dtypes ([#8](https://github.com/Latka-Industries/tet-py/issues/8))
-- `tet.convert` optional extras ([#10](https://github.com/Latka-Industries/tet-py/issues/10))
-- Zero-copy mmap → NumPy ([#11](https://github.com/Latka-Industries/tet-py/issues/11))
+- Pre-bump stack onto `dev` ([THI-452](https://linear.app/thicclatka/issue/THI-452)), then pin tetration 0.1.10
+- `read_numpy` memory budget preflight ([THI-23](https://linear.app/thicclatka/issue/THI-23); blocked on THI-16)
+- Integer `write_dataset` dtypes ([THI-26](https://linear.app/thicclatka/issue/THI-26); needs 0.1.10 pin)
+- `tet.convert` optional extras ([THI-22](https://linear.app/thicclatka/issue/THI-22))
+- Zero-copy mmap → NumPy ([THI-21](https://linear.app/thicclatka/issue/THI-21))
 
 ## [0.1.1] - 2026-06-12
 
