@@ -14,7 +14,7 @@ Python bindings for [**Tetration**](https://github.com/Latka-Industries/tetratio
 | Rust core | [`tetration`](https://crates.io/crates/tetration) on crates.io |
 | CLI (no Python) | [`tet`](https://github.com/Latka-Industries/tetration) binary from the main repo |
 
-**Status (0.1.1):** read/query (incl. `preview=N`, TOML queries, `memory_budget_*` kwargs); NumPy ram / spill / sidecar (incl. f16/u32/u64 export + `read_numpy` budget preflight); `TetWriter` / `write_dataset` (layout-v1 floats + integers); `tet.convert` for `.npy`/`.npz` (other formats stubbed via extras). Pins **tetration 0.1.12**. See [CHANGELOG.md](CHANGELOG.md) and [docs/HANDOFF.md](docs/HANDOFF.md).
+**Status (0.1.2):** read/query (incl. `preview=N`, TOML queries, `memory_budget_*` kwargs); NumPy ram / spill / sidecar (incl. f16/u32/u64 export + `read_numpy` budget preflight); `TetWriter` / `write_dataset` (layout-v1 floats + integers); `tet.convert` for `.npy`/`.npz` (other formats stubbed via extras). Pins **tetration 0.1.12**. See [CHANGELOG.md](CHANGELOG.md) and [docs/HANDOFF.md](docs/HANDOFF.md).
 
 Do not `pip install tetration` — that PyPI name is an unrelated math package. Use **`tet-py`** / **`import tet`**.
 

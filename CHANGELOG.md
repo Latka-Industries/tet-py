@@ -2,22 +2,25 @@
 
 ## [Unreleased]
 
+### Planned
+
+- Full `tet.convert` extras implementations ([THI-22](https://linear.app/thicclatka/issue/THI-22))
+- Zero-copy mmap → NumPy ([THI-21](https://linear.app/thicclatka/issue/THI-21))
+
+## [0.1.2] - 2026-10-15
+
 ### Added
 
 - `memory_budget_bytes=` / `memory_budget_percent=` on `execute`, `query_execute`, reductions, and transform sinks (THI-454)
 - Query strings accept TOML as well as JSON (CLI Auto parity via `parse_query_text`) (THI-456)
 - `tet.convert` scaffolding: `.npy` / single-array `.npz` → `.tet`; optional extras stubs for h5/netcdf/zarr/csv/parquet (THI-22)
+- `write_dataset` / `TetWriter` accept layout-v1 integer and `float16` NumPy dtypes via `TetDatasetWrite::row_major` (THI-26)
 
 ### Changed
 
 - CI runs `mypy python/tet` after `maturin develop`; workflow triggers on `dev` as well as `main` (THI-453)
 - Pin tetration **0.1.12** from crates.io (THI-457): `read_numpy` memory-budget preflight (THI-23), DenseBuffer **f16/u32/u64** → NumPy (THI-15), writer uses `f64_row_major`
-- `write_dataset` / `TetWriter` accept layout-v1 integer and `float16` NumPy dtypes via `TetDatasetWrite::row_major` (THI-26)
-
-### Planned
-
-- Full `tet.convert` extras implementations ([THI-22](https://linear.app/thicclatka/issue/THI-22))
-- Zero-copy mmap → NumPy ([THI-21](https://linear.app/thicclatka/issue/THI-21))
+- CI `paths-ignore` for docs / markdown so documentation-only pushes skip the test matrix
 
 ## [0.1.1] - 2026-06-12
 
