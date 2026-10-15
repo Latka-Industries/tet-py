@@ -20,7 +20,12 @@ use tetration::query::{
     QueryInputFormat, TetError as QueryError,
 };
 
-create_exception!(_native, TetError, PyException, "Query parse, validation, or execution error.");
+create_exception!(
+    _native,
+    TetError,
+    PyException,
+    "Query parse, validation, or execution error."
+);
 create_exception!(
     _native,
     CatalogError,
@@ -86,14 +91,9 @@ impl PyTetFile {
         options: ExecuteQueryOptions,
     ) -> PyResult<String> {
         let doc = parse_document(py, query)?;
-        let response = execute_query_document(
-            &doc,
-            self.inner.path(),
-            self.inner.mmap(),
-            options,
-            None,
-        )
-        .map_err(tet_err)?;
+        let response =
+            execute_query_document(&doc, self.inner.path(), self.inner.mmap(), options, None)
+                .map_err(tet_err)?;
         serde_json::to_string(&response).map_err(|e| TetError::new_err(e.to_string()))
     }
 }
@@ -183,8 +183,7 @@ impl PyTetFile {
     /// [`TetError`] on parse/validation/materialize failures; [`CatalogError`] when catalog-related.
     fn read_numpy(&self, py: Python<'_>, query: &Bound<'_, PyAny>) -> PyResult<Py<PyAny>> {
         let doc = parse_document(py, query)?;
-        let outcome =
-            materialize_query_selection(&doc, self.inner.mmap()).map_err(tet_err)?;
+        let outcome = materialize_query_selection(&doc, self.inner.mmap()).map_err(tet_err)?;
         Ok(numpy_export::outcome_to_py(py, outcome)?.unbind())
     }
 
@@ -195,13 +194,9 @@ impl PyTetFile {
     /// Same as [`Self::read_numpy`].
     fn transform_to_numpy(&self, py: Python<'_>, query: &Bound<'_, PyAny>) -> PyResult<Py<PyAny>> {
         let doc = parse_document(py, query)?;
-        let outcome = materialize_query_transform_ram(
-            &doc,
-            self.inner.mmap(),
-            self.inner.path(),
-            None,
-        )
-        .map_err(tet_err)?;
+        let outcome =
+            materialize_query_transform_ram(&doc, self.inner.mmap(), self.inner.path(), None)
+                .map_err(tet_err)?;
         Ok(numpy_export::outcome_to_py(py, outcome)?.unbind())
     }
 }

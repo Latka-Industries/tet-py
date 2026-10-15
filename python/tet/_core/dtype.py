@@ -34,7 +34,6 @@ _TAG_TO_NUMPY: dict[int, np.dtype] = {
     WIRE_DTYPE_TAG_V1["i16"]: np.dtype("<i2"),
     WIRE_DTYPE_TAG_V1["u32"]: np.dtype("<u4"),
     WIRE_DTYPE_TAG_V1["u64"]: np.dtype("<u8"),
-    # f16 is tagged on wire but not exported by tet-py materialize paths yet.
     WIRE_DTYPE_TAG_V1["f16"]: np.dtype("<f2"),
 }
 

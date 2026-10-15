@@ -1,5 +1,4 @@
-"""Shared test fixtures (from tetration 0.1.9 fixtures/small/tet)."""
-
+"""Shared test fixtures (from tetration fixtures/small/tet)."""
 from __future__ import annotations
 
 from pathlib import Path

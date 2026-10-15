@@ -7,8 +7,7 @@ use pyo3::exceptions::PyRuntimeError;
 use pyo3::prelude::*;
 use pyo3::types::{PyAny, PyDict};
 use tetration::catalog::{
-    CatalogError, CHUNK_PAYLOAD_CODEC_V1, CoordAxisV1, DATASET_DTYPE_TAG_V1, TetDatasetWrite,
-    TetWriterSession,
+    CatalogError, CoordAxisV1, TetDatasetWrite, TetWriterSession, DATASET_DTYPE_TAG_V1,
 };
 
 use crate::numpy_write;
@@ -55,18 +54,7 @@ fn dataset_from_buffer(
         return TetDatasetWrite::f32_row_major(name, &buf.shape, &chunk_shape, buf.data);
     }
     if tags.is_f64(buf.dtype) {
-        // tetration 0.1.9 exposes `f32_row_major` only; `push_dataset` validates f64 geometry.
-        return Ok(TetDatasetWrite {
-            name,
-            dtype: tags.f64,
-            shape: buf.shape,
-            chunk_shape,
-            chunk_codec: CHUNK_PAYLOAD_CODEC_V1.raw,
-            data: buf.data,
-            attrs: BTreeMap::new(),
-            dim_names: None,
-            coords: None,
-        });
+        return TetDatasetWrite::f64_row_major(name, &buf.shape, &chunk_shape, buf.data);
     }
     Err(CatalogError::InvalidWriteSpec(
         "unsupported dataset dtype tag (tet-py write supports f32/f64 only)",

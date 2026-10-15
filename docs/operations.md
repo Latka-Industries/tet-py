@@ -355,7 +355,7 @@ arr = f.read_numpy("a", selection=tet.selection_slices(tet.axis_slice(0, 100)))
 
 Integer dtypes (`i32`, `u8`, …) are supported where the engine materializes them; `f16` / `u32` / `u64` are not yet exported.
 
-**Memory:** `read_numpy` decodes the **full logical selection** into a new array (copy). There is no `memory_budget_bytes` preflight on this path today — if the selection is huge, slice it or use :meth:`~tet.TetFile.read_spill` (wire top-level `spill`) and call :meth:`~tet.SpillReadResult.to_numpy`. See also [tetration query engine — memory budget](https://github.com/Latka-Industries/tetration/blob/main/docs/query_engine.md#memory-budget-and-execution-strategies).
+**Memory:** `read_numpy` decodes the **full logical selection** into a new array (copy). With tetration **0.1.12+**, oversized selections are **preflight-refused** against the resolved `memory_budget_bytes` (same rule as transform `write: ram`). Slice the selection or use :meth:`~tet.TetFile.read_spill` (wire top-level `spill`) and call :meth:`~tet.SpillReadResult.to_numpy`. See also [tetration query engine — memory budget](https://github.com/Latka-Industries/tetration/blob/main/docs/query_engine.md#memory-budget-and-execution-strategies).
 
 ### `read_spill`
 
@@ -403,11 +403,11 @@ arr = s.to_numpy()
 
 `to_numpy` only supports **`f32` / `f64`** transforms. Spill files are dtype-native little-endian; use `s.shape` and the source dataset dtype tag to pick `np.float32` vs `np.float64`.
 
-High-level execute / reduction / transform methods accept `device=`, `memory_budget_bytes=`, and `memory_budget_percent=` — these merge into the query `execution` block before run (same precedence as the CLI). Use `raw=True` to inspect the resolved `execution.memory_budget_bytes` on the response. This does **not** add a `read_numpy` preflight (still THI-23 / upstream THI-16).
+High-level execute / reduction / transform methods accept `device=`, `memory_budget_bytes=`, and `memory_budget_percent=` — these merge into the query `execution` block before run (same precedence as the CLI). Use `raw=True` to inspect the resolved `execution.memory_budget_bytes` on the response.
 
 ### `read_numpy`
 
-No budget preflight — the full selection is materialized. For tensors larger than RAM, **slice** the selection, or use :meth:`~tet.TetFile.read_spill` and :meth:`~tet.SpillReadResult.to_numpy`.
+Preflight (tetration 0.1.12+): if the logical selection exceeds the resolved budget, returns :class:`~tet.TetError`. Raise the budget via kwargs on a surrounding query, slice the selection, or use :meth:`~tet.TetFile.read_spill`.
 
 ### Reductions vs dense export
 
@@ -416,7 +416,7 @@ No budget preflight — the full selection is materialized. For tensors larger t
 | `mean`, `sum`, streaming folds    | Chunk streaming / GPU fold — no full dense buffer              |
 | `median`, `quantile`, `histogram` | Engine `temp_spill_materialize` or refuse — tier-C materialize |
 | `transform.to_numpy`              | **Refuse** (use `to_spill`)                                    |
-| `read_numpy`                      | **No preflight** (slice or wire spill)                         |
+| `read_numpy`                      | **Preflight** refuse when over budget (0.1.12+); else slice/spill |
 
 ---
 
@@ -567,7 +567,7 @@ Plus: `execute`, `query`, `query_execute`, `plan_only`, `dataset`, `summary`, `i
 
 | Topic                                | Issue                                                                                                                                    |
 | ------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------- |
-| `read_numpy` memory budget preflight | [tet-py#9](https://github.com/Latka-Industries/tet-py/issues/9), [tetration#19](https://github.com/Latka-Industries/tetration/issues/19) |
+| `read_numpy` memory budget preflight | **Done** in tetration 0.1.12 ([THI-23](https://linear.app/thicclatka/issue/THI-23)) |
 | `write_dataset` integer dtypes       | [tet-py#8](https://github.com/Latka-Industries/tet-py/issues/8)                                                                          |
 | `f16` / `u32` / `u64` read export    | [tetration#20](https://github.com/Latka-Industries/tetration/issues/20)                                                                  |
 | Full index                           | [HANDOFF.md — issue tracking](HANDOFF.md#issue-tracking)                                                                                  |

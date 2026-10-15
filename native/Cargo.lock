@@ -53,6 +53,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "argus-chunk"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "51e49f146a7293e50f2605f4f673b9d6f38a6b98f0bb7d3d579f72daa4e6f50f"
+dependencies = [
+ "memmap2",
+ "thiserror",
+ "zstd",
+]
+
+[[package]]
 name = "autocfg"
 version = "1.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -385,9 +396,9 @@ checksum = "88904434abc2901f197fe8cc55f0445e7ded921dba5911dad2e2b39b48e663c4"
 
 [[package]]
 name = "memmap2"
-version = "0.9.10"
+version = "0.9.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "714098028fe011992e1c3962653c96b2d578c4b4bce9036e15ff220319b1e0e3"
+checksum = "d1219ed1b7f229ee7104d281dd01d6802fe28bb6e95d292942c4daacdeb798c0"
 dependencies = [
  "libc",
 ]
@@ -802,10 +813,11 @@ dependencies = [
 
 [[package]]
 name = "tetration"
-version = "0.1.9"
+version = "0.1.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "767c66ff8e4e8f89fcf83c500057c91bca7d0084146b51434344512308c0470c"
+checksum = "e43d066fe2e77c595e97da0a172d277069cb9fad39f06b08634ed9d236c2e5a4"
 dependencies = [
+ "argus-chunk",
  "bytemuck",
  "clap",
  "half",
