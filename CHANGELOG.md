@@ -6,6 +6,7 @@
 
 - `memory_budget_bytes=` / `memory_budget_percent=` on `execute`, `query_execute`, reductions, and transform sinks (THI-454)
 - Query strings accept TOML as well as JSON (CLI Auto parity via `parse_query_text`) (THI-456)
+- `tet.convert` scaffolding: `.npy` / single-array `.npz` → `.tet`; optional extras stubs for h5/netcdf/zarr/csv/parquet (THI-22)
 
 ### Changed
 
@@ -13,10 +14,8 @@
 
 ### Planned
 
-- Pre-bump stack onto `dev` ([THI-452](https://linear.app/thicclatka/issue/THI-452)), then pin tetration 0.1.10
-- `read_numpy` memory budget preflight ([THI-23](https://linear.app/thicclatka/issue/THI-23); blocked on THI-16)
-- Integer `write_dataset` dtypes ([THI-26](https://linear.app/thicclatka/issue/THI-26); needs 0.1.10 pin)
-- `tet.convert` optional extras ([THI-22](https://linear.app/thicclatka/issue/THI-22))
+- Pin tetration **≥0.1.12** (integer writes THI-26, `read_numpy` preflight THI-23, f16/u32/u64 THI-15)
+- Full `tet.convert` extras implementations ([THI-22](https://linear.app/thicclatka/issue/THI-22))
 - Zero-copy mmap → NumPy ([THI-21](https://linear.app/thicclatka/issue/THI-21))
 
 ## [0.1.1] - 2026-06-12
