@@ -11,10 +11,11 @@
 ### Changed
 
 - CI runs `mypy python/tet` after `maturin develop`; workflow triggers on `dev` as well as `main` (THI-453)
+- Pin tetration **0.1.12** from crates.io (THI-457): `read_numpy` memory-budget preflight (THI-23), DenseBuffer **f16/u32/u64** → NumPy (THI-15), writer uses `f64_row_major`
 
 ### Planned
 
-- Pin tetration **≥0.1.12** (integer writes THI-26, `read_numpy` preflight THI-23, f16/u32/u64 THI-15)
+- Integer `write_dataset` dtypes beyond f32/f64 ([THI-26](https://linear.app/thicclatka/issue/THI-26))
 - Full `tet.convert` extras implementations ([THI-22](https://linear.app/thicclatka/issue/THI-22))
 - Zero-copy mmap → NumPy ([THI-21](https://linear.app/thicclatka/issue/THI-21))
 

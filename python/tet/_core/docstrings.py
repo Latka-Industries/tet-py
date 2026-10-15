@@ -62,7 +62,8 @@ numpy.ndarray
 Raises
 ------
 UnknownDatasetError, TetError
-    Missing dataset, decode failure, or unsupported dtype.\
+    Missing dataset, decode failure, unsupported dtype, or selection over
+    the resolved ``memory_budget_bytes`` (tetration 0.1.12+ preflight).\
 """
 
 _SPILL_READ_IO = """\

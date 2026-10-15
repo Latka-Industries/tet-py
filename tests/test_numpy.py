@@ -16,6 +16,7 @@ _EXPECTED_INTEGER = np.arange(1, 7).reshape(2, 3)
 _INTEGER_READ_CASES = (
     ("multichunk_u8.tet", np.uint8, WIRE_DTYPE_TAG_V1["u8"]),
     ("multichunk_u16.tet", np.uint16, WIRE_DTYPE_TAG_V1["u16"]),
+    ("multichunk_u32.tet", np.uint32, WIRE_DTYPE_TAG_V1["u32"]),
     ("multichunk_i16.tet", np.int16, WIRE_DTYPE_TAG_V1["i16"]),
     ("multichunk_i32.tet", np.int32, WIRE_DTYPE_TAG_V1["i32"]),
     ("multichunk_i64.tet", np.int64, WIRE_DTYPE_TAG_V1["i64"]),
@@ -58,18 +59,16 @@ def test_read_numpy_integer_roundtrip(
     assert f.sum("a") == pytest.approx(21.0)
 
 
-@pytest.mark.parametrize(
-    ("fixture_name", "wire_name"),
-    [("multichunk_u32.tet", "U32"), ("multichunk_f16.tet", "F16")],
-    ids=["u32", "f16"],
-)
-def test_read_numpy_rejects_unsupported_wire_dtype(fixture_name: str, wire_name: str) -> None:
-    path = _FIXTURES / fixture_name
+def test_read_numpy_f16() -> None:
+    path = _FIXTURES / "multichunk_f16.tet"
     if not path.is_file():
         pytest.skip(f"missing fixture: {path}")
     f = tet.open(path)
-    with pytest.raises(tet.TetError, match=rf"dense numpy export does not support.*{wire_name}"):
-        f.read_numpy("a")
+    ds = f.dataset("a")
+    assert ds.dtype == WIRE_DTYPE_TAG_V1["f16"]
+    arr = f.read_numpy("a")
+    assert arr.dtype == np.dtype("<f2")
+    np.testing.assert_array_equal(arr.astype(np.float32), _EXPECTED_INTEGER.astype(np.float32))
 
 
 def test_transform_ram_zscore(large_path: Path) -> None:

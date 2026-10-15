@@ -14,7 +14,7 @@ Python bindings for [**Tetration**](https://github.com/Latka-Industries/tetratio
 | Rust core | [`tetration`](https://crates.io/crates/tetration) on crates.io |
 | CLI (no Python) | [`tet`](https://github.com/Latka-Industries/tetration) binary from the main repo |
 
-**Status (0.1.1 → next cut on `dev`):** read/query (incl. `preview=N`, TOML queries, `memory_budget_*` kwargs); NumPy ram / spill / sidecar; `TetWriter` / `write_dataset` (f32/f64); `tet.convert` for `.npy`/`.npz` (other formats stubbed via extras). Still pins **tetration 0.1.9**. **Next:** pin bump (prefer **0.1.12+**) for integer writes + `read_numpy` preflight. See [CHANGELOG.md](CHANGELOG.md) and [docs/HANDOFF.md](docs/HANDOFF.md).
+**Status (0.1.1):** read/query (incl. `preview=N`, TOML queries, `memory_budget_*` kwargs); NumPy ram / spill / sidecar (incl. f16/u32/u64 export + `read_numpy` budget preflight); `TetWriter` / `write_dataset` (f32/f64); `tet.convert` for `.npy`/`.npz` (other formats stubbed via extras). Pins **tetration 0.1.12**. See [CHANGELOG.md](CHANGELOG.md) and [docs/HANDOFF.md](docs/HANDOFF.md).
 
 Do not `pip install tetration` — that PyPI name is an unrelated math package. Use **`tet-py`** / **`import tet`**.
 
@@ -37,7 +37,7 @@ uv run pytest -q
 uv run mypy python/tet
 ```
 
-Links **tetration 0.1.9** from crates.io. Test fixtures live in `tests/fixtures/`.
+Links **tetration 0.1.12** from crates.io. Test fixtures live in `tests/fixtures/`.
 
 ### Example
 
@@ -75,7 +75,7 @@ Both return the full **`tet info --json`** dict (superblock, datasets, **all chu
 tet-py/
   pyproject.toml      # PEP 621 + maturin
   python/tet/         # public API + _core, _query, _io, _transform
-  native/             # PyO3 extension (links tetration 0.1.9)
+  native/             # PyO3 extension (links tetration 0.1.12)
   tests/fixtures/     # vendored .tet fixtures for CI
   docs/               # operations.md, HANDOFF.md
   CHANGELOG.md
@@ -96,7 +96,7 @@ tet-py/
 - [x] NumPy read — spill (`read_spill`, `transform.to_spill`, `.to_numpy()` loaders)
 - [x] NumPy read — sidecar (`transform.to_sidecar`, `SidecarTransformResult.to_numpy`)
 - [x] NumPy write (`TetWriter`, `write_dataset`)
-- [x] PyPI wheels (`tet-py` 0.1.1); `tetration = "0.1.9"` from crates.io
+- [x] PyPI wheels (`tet-py` 0.1.1); tetration pin now **0.1.12** on crates.io
 - [x] Query preview samples (`preview=N`, `QueryResult.preview`) — [#7](https://github.com/Latka-Industries/tet-py/issues/7)
 - [x] CI fixtures vendored in `tests/fixtures/` (no sibling tetration checkout) — [#6](https://github.com/Latka-Industries/tet-py/issues/6)
 
@@ -104,8 +104,9 @@ tet-py/
 
 ### Near-term
 
-- [x] **Pre-bump stack** ([THI-452](https://linear.app/thicclatka/issue/THI-452)) — on `dev` (CI mypy, budgets, TOML, tests, convert npy scaffold)
-- [ ] **Pin tetration ≥0.1.12** — integer writes ([THI-26](https://linear.app/thicclatka/issue/THI-26)), `read_numpy` preflight ([THI-23](https://linear.app/thicclatka/issue/THI-23); THI-16 shipped in 0.1.12), f16/u32/u64 export ([THI-15](https://linear.app/thicclatka/issue/THI-15))
+- [x] **Pre-bump stack** ([THI-452](https://linear.app/thicclatka/issue/THI-452)) — CI mypy, budgets, TOML, tests, convert npy scaffold
+- [x] **Pin tetration 0.1.12** ([THI-457](https://linear.app/thicclatka/issue/THI-457)) — `read_numpy` preflight ([THI-23](https://linear.app/thicclatka/issue/THI-23)), f16/u32/u64 export ([THI-15](https://linear.app/thicclatka/issue/THI-15)), `f64_row_major` writer
+- [ ] **Integer `write_dataset` dtypes** ([THI-26](https://linear.app/thicclatka/issue/THI-26)) — beyond f32/f64
 - [ ] **`tet.convert` full extras** ([THI-22](https://linear.app/thicclatka/issue/THI-22)) — h5/netcdf/zarr/csv/parquet implementations (stubs + extras exist; Rust CLI remains fast path)
 - [ ] **Zero-copy mmap → NumPy** ([THI-21](https://linear.app/thicclatka/issue/THI-21)) — views over mmap’d raw payloads (P2)
 

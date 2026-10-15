@@ -21,11 +21,11 @@ Agent/onboarding doc for **`~/Code/tet-py`**. Parent project: **[tetration](http
 - [x] Phase 2 NumPy **ram** path: `read_numpy`, `Dataset.to_numpy`, `transform.to_numpy.*`, `TetWriter`, `write_dataset`
 - [x] Phase 2 NumPy **spill** path: `read_spill`, `transform.to_spill.*`, `SpillReadResult.to_numpy`, `SpillTransformResult.to_numpy`
 - [x] Phase 2 NumPy **sidecar** path: `transform.to_sidecar.*`, `SidecarTransformResult.to_numpy` / `.open`
-- [x] Phase 4 **PyPI** (0.1.0 + **0.1.1** shipped): abi3 wheels, `publish.yml`, `tetration = "0.1.9"` from crates.io only
+- [x] Phase 4 **PyPI** (0.1.0 + **0.1.1** shipped): abi3 wheels, `publish.yml`, crates.io pin (PyPI 0.1.1 → 0.1.9; `main` → **0.1.12**)
 - [x] CI fixtures vendored in `tests/fixtures/` (no sibling tetration checkout)
 - [x] Package subpackages: `_core`, `_query`, `_io`, `_transform`; public `import tet` unchanged
 - [x] `uv sync --extra dev`, PyO3 **0.28**, pytest + **mypy in CI** on `python/tet`
-- [x] `tet.__version__` (0.1.1 on PyPI), `tet.core_version()` (linked tetration 0.1.9)
+- [x] `tet.__version__` (0.1.1 on PyPI), `tet.core_version()` (0.1.12 on `main`)
 - [x] Query preview: `preview=N` on reducers / `query_execute`; `QueryResult.preview` (THI-24)
 - [x] Docs: [docs.tetration.sh/python](https://docs.tetration.sh/python/), [CHANGELOG.md](../CHANGELOG.md)
 - [x] Upstream **THI-60**: tetration **0.1.10** on crates.io (`f64_row_major` / `row_major`) — pin bump still pending
@@ -33,11 +33,9 @@ Agent/onboarding doc for **`~/Code/tet-py`**. Parent project: **[tetration](http
 
 ### Not done
 
-- Pin tetration (prefer **0.1.12+**, not just 0.1.10): integer writes (THI-26), drop f64 writer workaround
-- `read_numpy` preflight (THI-23) — upstream THI-16 **Done** in tetration **0.1.12**; not unlocked by 0.1.10 alone
+- Integer `write_dataset` dtypes beyond f32/f64 (THI-26)
 - Full convert extras (h5/netcdf/zarr/csv/parquet implementations) — stubs + extras declared; npy/npz shipped
 - Zero-copy mmap → NumPy (THI-21)
-- DenseBuffer f16/u32/u64 → NumPy (THI-15; needs tetration ≥0.1.12)
 
 ## Issue tracking
 
@@ -47,12 +45,13 @@ Agent/onboarding doc for **`~/Code/tet-py`**. Parent project: **[tetration](http
 | ------ | -------------------------------------------------------------- |
 | THI-452 | Parent: pre-bump hardening (dev stack; pin bump follow-up)     |
 | THI-22 | `tet.convert` — npy/npz scaffolding shipped; full extras TBD      |
-| THI-23 | `read_numpy` memory budget preflight (needs tetration ≥0.1.12) |
-| THI-26 | `write_dataset` integer dtypes (needs tetration ≥0.1.10)       |
+| THI-457 | Pin tetration 0.1.12 + DenseBuffer f16/u32/u64 + writer cleanup |
+| THI-23 | `read_numpy` memory budget preflight (unlocked by 0.1.12)      |
+| THI-26 | `write_dataset` integer dtypes (API ready; tet-py still f32/f64) |
 | THI-21 | Zero-copy mmap → NumPy                                         |
 | THI-61 | Upstream: unify transform sidecar with `TetWriterSession`      |
 
-**Shipped (Linear done):** THI-20 (PyPI), THI-24 (preview ndarray), THI-25 (fixtures), THI-27 (docs), THI-60 (`f64_row_major` / `row_major` in tetration 0.1.10), THI-453–456 (pre-bump API/CI/tests).
+**Shipped (Linear done):** THI-20 (PyPI), THI-24 (preview ndarray), THI-25 (fixtures), THI-27 (docs), THI-60 (`f64_row_major` / `row_major` in tetration 0.1.10), THI-453–456 (pre-bump API/CI/tests). Pin work: THI-457 (this PR).
 
 **tetration (upstream):** THI-16 selection preflight (in **0.1.12**) · THI-15 f16/u32/u64 export (in **0.1.12**)
 
@@ -111,8 +110,8 @@ Goal: make **NumPy** the primary Python array surface for `.tet` (read and write
 - [x] PyO3 wrapper over `materialize_read_plan_*` / `materialize_query_transform_ram`; copy into NumPy (v1)
 - [x] `query_execute(..., preview=N)` → `QueryResult.preview` for capped `execution.*_preview` samples — [#7](https://github.com/Latka-Industries/tet-py/issues/7) / THI-24
 - [x] Document RAM budget: `to_numpy` vs `to_spill`, `read_numpy` slice/spill notes ([`operations.md`](operations.md#memory-budget))
-- [ ] `read_numpy` budget preflight (blocked on [tetration#19](https://github.com/Latka-Industries/tetration/issues/19)) — [#9](https://github.com/Latka-Industries/tet-py/issues/9)
-- [ ] Integer `write_dataset` dtypes beyond f32/f64 — [#8](https://github.com/Latka-Industries/tet-py/issues/8)
+- [x] `read_numpy` budget preflight (tetration 0.1.12 / THI-16) — [#9](https://github.com/Latka-Industries/tet-py/issues/9) / THI-23
+- [ ] Integer `write_dataset` dtypes beyond f32/f64 — [#8](https://github.com/Latka-Industries/tet-py/issues/8) / THI-26
 - [ ] Defer zero-copy mmap → NumPy until copy path is stable (P2) — [#11](https://github.com/Latka-Industries/tet-py/issues/11)
 
 **Write (NumPy → `.tet`)** — no Rust HDF5/NetCDF in wheels.
@@ -148,7 +147,7 @@ Rust CLI **`tet convert`** remains the fast path for HDF5/NetCDF/Zarr on machine
 
 ### Phase 4 — Release engineering (P1)
 
-- [x] Pin `tetration = "0.1.9"` from crates.io in published `native/Cargo.toml` (no path dep)
+- [x] Pin `tetration` from crates.io in published `native/Cargo.toml` (no path dep; now **0.1.12**)
 - [x] Linux / macOS / Windows wheels via maturin-action + `.github/workflows/publish.yml`
 - [x] Version policy: `tet.__version__` (tet-py) vs `tet.core_version()` (tetration crate) — see README / CHANGELOG
 - [x] `numpy>=2.0` dependency
