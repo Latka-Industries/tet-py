@@ -1,16 +1,12 @@
 # tet-py documentation
 
+Prefer the site: **[docs.tetration.sh/python](https://docs.tetration.sh/python/)**.
+
 | Doc | Contents |
 | --- | -------- |
-| [**operations.md**](operations.md) | Query ops and NumPy interchange (ram / spill / sidecar) with examples |
-| [**HANDOFF.md**](HANDOFF.md) | Phases, dev commands, agent notes |
-| [**CHANGELOG.md**](../CHANGELOG.md) | Release history |
+| [operations.md](operations.md) | Query ops and NumPy interchange (local mirror) |
+| [HANDOFF.md](HANDOFF.md) | Dev commands, agent notes |
+| [CHANGELOG.md](../CHANGELOG.md) | Release history |
+| [Roadmap](https://docs.tetration.sh/roadmap) | Shipped + prospective (docs site) |
 
-Site docs (broader Tetration + tet-py guides): [docs.tetration.sh/python](https://docs.tetration.sh/python/)
-
-Current tet-py release: [**0.1.1**](https://pypi.org/project/tet-py/0.1.1/) on PyPI (query preview API).
-
-External references:
-
-- [Tetration query engine](https://github.com/Latka-Industries/tetration/blob/main/docs/query_engine.md) — wire JSON schema (CLI parity)
-- [Query fixtures](https://github.com/Latka-Industries/tetration/tree/main/fixtures/queries) — example wire documents
+Current release: [**tet-py on PyPI**](https://pypi.org/project/tet-py/) (pins tetration **0.2.x**).
