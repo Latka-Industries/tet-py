@@ -15,10 +15,12 @@ def test_missing_file_raises_os_error() -> None:
         tet.open("/nonexistent/does-not-exist.tet")
 
 
-def test_invalid_query_json_raises_tet_error(sample_path: Path) -> None:
+def test_invalid_query_text_raises_tet_error(sample_path: Path) -> None:
     f = tet.open(sample_path)
-    with pytest.raises(tet.TetError, match="valid JSON"):
+    with pytest.raises(tet.TetError):
         f.query("not json")
+    with pytest.raises(tet.TetError, match="valid JSON"):
+        f.query("{not json")
 
 
 def test_validation_error_raises_tet_error(sample_path: Path) -> None:

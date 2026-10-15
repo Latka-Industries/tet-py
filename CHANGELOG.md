@@ -2,12 +2,21 @@
 
 ## [Unreleased]
 
+### Added
+
+- `memory_budget_bytes=` / `memory_budget_percent=` on `execute`, `query_execute`, reductions, and transform sinks (THI-454)
+- Query strings accept TOML as well as JSON (CLI Auto parity via `parse_query_text`) (THI-456)
+- `tet.convert` scaffolding: `.npy` / single-array `.npz` → `.tet`; optional extras stubs for h5/netcdf/zarr/csv/parquet (THI-22)
+
+### Changed
+
+- CI runs `mypy python/tet` after `maturin develop`; workflow triggers on `dev` as well as `main` (THI-453)
+
 ### Planned
 
-- `read_numpy` memory budget preflight ([#9](https://github.com/Latka-Industries/tet-py/issues/9))
-- Integer `write_dataset` dtypes ([#8](https://github.com/Latka-Industries/tet-py/issues/8))
-- `tet.convert` optional extras ([#10](https://github.com/Latka-Industries/tet-py/issues/10))
-- Zero-copy mmap → NumPy ([#11](https://github.com/Latka-Industries/tet-py/issues/11))
+- Pin tetration **≥0.1.12** (integer writes THI-26, `read_numpy` preflight THI-23, f16/u32/u64 THI-15)
+- Full `tet.convert` extras implementations ([THI-22](https://linear.app/thicclatka/issue/THI-22))
+- Zero-copy mmap → NumPy ([THI-21](https://linear.app/thicclatka/issue/THI-21))
 
 ## [0.1.1] - 2026-06-12
 
@@ -33,11 +42,9 @@ First public release on [PyPI](https://pypi.org/project/tet-py/0.1.0/). Links **
 ### Changed
 
 - Package layout: `python/tet/` subpackages (`_core`, `_query`, `_io`, `_transform`); public `import tet` API unchanged
+- Rust edition **2024**, MSRV **1.95**, PyO3 **0.28** (abi3-py311)
 
 ### Notes
 
-- Do not `pip install tetration` — unrelated PyPI package. Use **`tet-py`** / **`import tet`**.
 - `tet.core_version()` reports the linked tetration crate (e.g. `0.1.9`); `tet.__version__` is the tet-py release.
-
-[0.1.1]: https://pypi.org/project/tet-py/0.1.1/
-[0.1.0]: https://github.com/Latka-Industries/tet-py/releases/tag/v0.1.0
+- GPU / native HDF5-NetCDF convert codecs are not in the wheel (`default-features = false` on the tetration dependency).

@@ -13,7 +13,7 @@ Agent/onboarding doc for **`~/Code/tet-py`**. Parent project: **[tetration](http
 
 **C ABI** stays in the **tetration** repo later (Julia/R/Go), not in tet-py. Python uses **PyO3 → `tetration` rlib**, not the C layer.
 
-## Current state (June 2026)
+## Current state (Oct 2026)
 
 ### Done / working
 
@@ -24,16 +24,20 @@ Agent/onboarding doc for **`~/Code/tet-py`**. Parent project: **[tetration](http
 - [x] Phase 4 **PyPI** (0.1.0 + **0.1.1** shipped): abi3 wheels, `publish.yml`, `tetration = "0.1.9"` from crates.io only
 - [x] CI fixtures vendored in `tests/fixtures/` (no sibling tetration checkout)
 - [x] Package subpackages: `_core`, `_query`, `_io`, `_transform`; public `import tet` unchanged
-- [x] `uv sync --extra dev`, PyO3 **0.28**, **50** pytest tests, mypy on `python/tet`
+- [x] `uv sync --extra dev`, PyO3 **0.28**, pytest + **mypy in CI** on `python/tet`
 - [x] `tet.__version__` (0.1.1 on PyPI), `tet.core_version()` (linked tetration 0.1.9)
 - [x] Query preview: `preview=N` on reducers / `query_execute`; `QueryResult.preview` (THI-24)
 - [x] Docs: [docs.tetration.sh/python](https://docs.tetration.sh/python/), [CHANGELOG.md](../CHANGELOG.md)
+- [x] Upstream **THI-60**: tetration **0.1.10** on crates.io (`f64_row_major` / `row_major`) — pin bump still pending
+- [x] Pre-bump onto `dev` (THI-452): CI mypy (THI-453), `memory_budget_*` (THI-454), TOML queries (THI-456), write/read tests (THI-455), `tet.convert` npy scaffolding (THI-22)
 
 ### Not done
 
-- Phase 3 **convert** extras (`tet.convert`) — [#10](https://github.com/Latka-Industries/tet-py/issues/10) / THI-22
-- Phase 2 tail: `read_numpy` preflight ([#9](https://github.com/Latka-Industries/tet-py/issues/9) / THI-23), integer write dtypes ([#8](https://github.com/Latka-Industries/tet-py/issues/8) / THI-26)
-- Zero-copy mmap → NumPy ([#11](https://github.com/Latka-Industries/tet-py/issues/11) / THI-21)
+- Pin tetration (prefer **0.1.12+**, not just 0.1.10): integer writes (THI-26), drop f64 writer workaround
+- `read_numpy` preflight (THI-23) — upstream THI-16 **Done** in tetration **0.1.12**; not unlocked by 0.1.10 alone
+- Full convert extras (h5/netcdf/zarr/csv/parquet implementations) — stubs + extras declared; npy/npz shipped
+- Zero-copy mmap → NumPy (THI-21)
+- DenseBuffer f16/u32/u64 → NumPy (THI-15; needs tetration ≥0.1.12)
 
 ## Issue tracking
 
@@ -41,16 +45,16 @@ Agent/onboarding doc for **`~/Code/tet-py`**. Parent project: **[tetration](http
 
 | Linear | Topic                                                          |
 | ------ | -------------------------------------------------------------- |
-| THI-22 | `tet.convert` orchestration (Phase 3)                          |
-| THI-23 | `read_numpy` memory budget preflight                           |
-| THI-26 | `write_dataset` integer dtypes                                 |
+| THI-452 | Parent: pre-bump hardening (dev stack; pin bump follow-up)     |
+| THI-22 | `tet.convert` — npy/npz scaffolding shipped; full extras TBD      |
+| THI-23 | `read_numpy` memory budget preflight (needs tetration ≥0.1.12) |
+| THI-26 | `write_dataset` integer dtypes (needs tetration ≥0.1.10)       |
 | THI-21 | Zero-copy mmap → NumPy                                         |
-| THI-60 | Upstream: publish `f64_row_major` / `row_major` in catalog API |
 | THI-61 | Upstream: unify transform sidecar with `TetWriterSession`      |
 
-**Shipped (Linear done):** THI-20 (PyPI), THI-24 (preview ndarray), THI-25 (fixtures), THI-27 (docs).
+**Shipped (Linear done):** THI-20 (PyPI), THI-24 (preview ndarray), THI-25 (fixtures), THI-27 (docs), THI-60 (`f64_row_major` / `row_major` in tetration 0.1.10), THI-453–456 (pre-bump API/CI/tests).
 
-**tetration (upstream):** [#19](https://github.com/Latka-Industries/tetration/issues/19) selection preflight · [#20](https://github.com/Latka-Industries/tetration/issues/20) f16/u32/u64 export
+**tetration (upstream):** THI-16 selection preflight (in **0.1.12**) · THI-15 f16/u32/u64 export (in **0.1.12**)
 
 ## Dev commands (uv)
 
@@ -72,7 +76,7 @@ Layout: `python/tet/` subpackages (`_core`, `_query`, `_io`, `_transform`); `nat
 ### Phase 0 — Repo hygiene (P0)
 
 - [x] Push to `github.com/Latka-Industries/tet-py`
-- [x] CI: `.github/workflows/ci.yml` (checkout sibling **tetration**, `uv sync` → `maturin develop` → `pytest`)
+- [x] CI: `.github/workflows/ci.yml` (`uv sync` → `maturin develop` → `mypy` → `pytest`; branches: `main`, `dev`)
 - [x] **`tet-py`** on [PyPI](https://pypi.org/project/tet-py/) (0.1.1 current)
 - [x] `LICENSE-MIT` + `LICENSE-APACHE` (dual license, match tetration)
 - [x] README links tetration Phase 11, query fixtures, query_engine docs
@@ -179,7 +183,7 @@ User code  →  import tet  →  python/tet/__init__.py
 | Horizon    | Target                                                                                      |
 | ---------- | ------------------------------------------------------------------------------------------- |
 | **Short**  | ~~PyPI 0.1.1~~ done; Phase 2 tail (preflight), docs hygiene                               |
-| **Medium** | `tet.convert` extras; upstream THI-60/61 writer/sidecar cleanup                             |
+| **Medium** | `tet.convert` extras; upstream THI-61 sidecar/writer unify; pin tetration 0.1.10 (THI-452)   |
 | **Long**   | Zero-copy read; object-store paths (tetration Phase 12); optional C ABI for non-Python only |
 
 **Success (0.1.x):** `pip install tet-py` → `import tet` → open `.tet` → query (optional **`preview=N`**), **`read_numpy`** / **`read_spill`**, transform sinks (**`to_numpy`** / **`to_spill`** / **`to_sidecar`**), **`write_dataset`** — without Rust on the end-user machine. Convert extras still planned.

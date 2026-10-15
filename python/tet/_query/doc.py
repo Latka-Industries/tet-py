@@ -272,3 +272,59 @@ def op_key_from_doc(doc: dict[str, Any]) -> str | None:
     if len(ops) == 1:
         return ops[0]
     return None
+
+
+def apply_execution_hints(
+    doc: dict[str, Any],
+    *,
+    device: str | None = None,
+    memory_budget_bytes: int | None = None,
+    memory_budget_percent: float | int | None = None,
+) -> dict[str, Any]:
+    """Merge optional ``execution`` fields onto a query document.
+
+    Parameters
+    ----------
+    doc : dict
+        Query wire document (mutated only via a shallow copy when hints are set).
+    device : str, optional
+        ``execution.device`` (e.g. ``"cpu"``, ``"cuda:0"``).
+    memory_budget_bytes : int, optional
+        Hard dense-RAM cap (highest precedence in the engine).
+    memory_budget_percent : float or int, optional
+        Percent of host RAM (``100`` = 100%); wire key ``memory_budget_percent``.
+
+    Returns
+    -------
+    dict
+        ``doc`` unchanged when all hints are ``None``; otherwise a copy with
+        ``execution`` updated.
+    """
+    if (
+        device is None
+        and memory_budget_bytes is None
+        and memory_budget_percent is None
+    ):
+        return doc
+    execution = dict(doc.get("execution") or {})
+    if device is not None:
+        execution["device"] = device
+    if memory_budget_bytes is not None:
+        execution["memory_budget_bytes"] = int(memory_budget_bytes)
+    if memory_budget_percent is not None:
+        execution["memory_budget_percent"] = memory_budget_percent
+    return {**doc, "execution": execution}
+
+
+def has_execution_hints(
+    *,
+    device: str | None = None,
+    memory_budget_bytes: int | None = None,
+    memory_budget_percent: float | int | None = None,
+) -> bool:
+    """True when any high-level execution kwargs should merge onto the query."""
+    return (
+        device is not None
+        or memory_budget_bytes is not None
+        or memory_budget_percent is not None
+    )

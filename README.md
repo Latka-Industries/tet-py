@@ -14,7 +14,7 @@ Python bindings for [**Tetration**](https://github.com/Latka-Industries/tetratio
 | Rust core | [`tetration`](https://crates.io/crates/tetration) on crates.io |
 | CLI (no Python) | [`tet`](https://github.com/Latka-Industries/tetration) binary from the main repo |
 
-**Status (0.1.1):** read/query API (including `preview=N` on reductions); NumPy ram / spill / sidecar; `TetWriter` / `write_dataset` (f32/f64). **Next:** `tet.convert` extras, `read_numpy` preflight, integer write dtypes — see [CHANGELOG.md](CHANGELOG.md) and [docs/HANDOFF.md](docs/HANDOFF.md).
+**Status (0.1.1 → next cut on `dev`):** read/query (incl. `preview=N`, TOML queries, `memory_budget_*` kwargs); NumPy ram / spill / sidecar; `TetWriter` / `write_dataset` (f32/f64); `tet.convert` for `.npy`/`.npz` (other formats stubbed via extras). Still pins **tetration 0.1.9**. **Next:** pin bump (prefer **0.1.12+**) for integer writes + `read_numpy` preflight. See [CHANGELOG.md](CHANGELOG.md) and [docs/HANDOFF.md](docs/HANDOFF.md).
 
 Do not `pip install tetration` — that PyPI name is an unrelated math package. Use **`tet-py`** / **`import tet`**.
 
@@ -104,10 +104,10 @@ tet-py/
 
 ### Near-term
 
-- [ ] **`read_numpy` preflight** ([#9](https://github.com/Latka-Industries/tet-py/issues/9)) — fail fast on oversized materialize (blocked on [tetration #19](https://github.com/Latka-Industries/tetration/issues/19))
-- [ ] **Integer `write_dataset` dtypes** ([#8](https://github.com/Latka-Industries/tet-py/issues/8)) — beyond f32/f64
-- [ ] **`tet.convert` orchestration** ([#10](https://github.com/Latka-Industries/tet-py/issues/10)) — optional extras (`h5py`, `netCDF4`, `zarr`, `pandas`, `pyarrow`); Rust `tet convert` stays the fast path when native libs are installed
-- [ ] **Zero-copy mmap → NumPy** ([#11](https://github.com/Latka-Industries/tet-py/issues/11)) — views over mmap’d raw payloads (P2; after copy path stabilizes)
+- [x] **Pre-bump stack** ([THI-452](https://linear.app/thicclatka/issue/THI-452)) — on `dev` (CI mypy, budgets, TOML, tests, convert npy scaffold)
+- [ ] **Pin tetration ≥0.1.12** — integer writes ([THI-26](https://linear.app/thicclatka/issue/THI-26)), `read_numpy` preflight ([THI-23](https://linear.app/thicclatka/issue/THI-23); THI-16 shipped in 0.1.12), f16/u32/u64 export ([THI-15](https://linear.app/thicclatka/issue/THI-15))
+- [ ] **`tet.convert` full extras** ([THI-22](https://linear.app/thicclatka/issue/THI-22)) — h5/netcdf/zarr/csv/parquet implementations (stubs + extras exist; Rust CLI remains fast path)
+- [ ] **Zero-copy mmap → NumPy** ([THI-21](https://linear.app/thicclatka/issue/THI-21)) — views over mmap’d raw payloads (P2)
 
 ### Docs
 
