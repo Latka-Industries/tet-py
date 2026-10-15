@@ -9,8 +9,8 @@ fn main() {
             panic!("version = not found in ../../tetration/Cargo.toml");
         })
     } else {
-        // crates.io-only build: keep in sync with Cargo.toml `[dependencies.tetration].version`
-        "0.1.8".to_owned()
+        // crates.io / CI build (no sibling checkout): keep in sync with `[dependencies.tetration].version`
+        "0.2.1".to_owned()
     };
     println!("cargo:rustc-env=TETRATION_VERSION={version}");
 }
