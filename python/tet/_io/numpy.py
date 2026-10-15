@@ -37,7 +37,8 @@ def read_numpy_array(
     file._require_dataset(dataset)
     doc = build_selection_query(dataset, selection=selection)
     arr = file._inner.read_numpy(doc)
-    return np.asarray(arr)
+    # Preserve ``numpy.memmap`` zero-copy views (``asarray`` demotes to ndarray).
+    return np.asanyarray(arr)
 
 
 read_numpy_array.__doc__ = numpy_read_doc(

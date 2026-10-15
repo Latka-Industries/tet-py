@@ -178,11 +178,22 @@ impl PyTetFile {
 
     /// Materialize a selection-only query document into a `numpy.ndarray`.
     ///
+    /// When the read plan is a **single raw** (uncompressed) chunk whose on-disk payload
+    /// equals the logical row-major selection, returns a read-only
+    /// [`numpy.memmap`](https://numpy.org/doc/stable/reference/generated/numpy.memmap.html)
+    /// over that region (zero-copy). Multi-chunk / zstd / partial tiles copy.
+    ///
     /// # Errors
     ///
     /// [`TetError`] on parse/validation/materialize failures; [`CatalogError`] when catalog-related.
     fn read_numpy(&self, py: Python<'_>, query: &Bound<'_, PyAny>) -> PyResult<Py<PyAny>> {
         let doc = parse_document(py, query)?;
+        let path = self.inner.path().display().to_string();
+        if let Some(view) =
+            numpy_export::try_zero_copy_read_numpy(py, &path, self.inner.mmap(), &doc)?
+        {
+            return Ok(view.unbind());
+        }
         let outcome = materialize_query_selection(&doc, self.inner.mmap()).map_err(tet_err)?;
         Ok(numpy_export::outcome_to_py(py, outcome)?.unbind())
     }

@@ -57,13 +57,15 @@ selection : sequence of dict, optional
 Returns
 -------
 numpy.ndarray
-    Row-major array with shape matching the logical selection.
+    Row-major array with shape matching the logical selection. A single
+    raw chunk matching the selection may return a read-only ``numpy.memmap``
+    (zero-copy); otherwise an owned copy.
 
 Raises
 ------
 UnknownDatasetError, TetError
-    Missing dataset, decode failure, unsupported dtype, or selection over
-    the resolved ``memory_budget_bytes`` (tetration 0.1.12+ preflight).\
+    Missing dataset, decode failure, unsupported dtype, or (copy path only)
+    selection over the resolved ``memory_budget_bytes`` preflight.\
 """
 
 _SPILL_READ_IO = """\

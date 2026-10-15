@@ -37,6 +37,44 @@ def test_read_numpy(sample_path: Path) -> None:
     np.testing.assert_allclose(ds.to_numpy(f).ravel(), [1.0, 2.0, 3.0, 4.0, 5.0, 6.0])
 
 
+def test_read_numpy_zero_copy_contiguous_raw(tmp_path: Path) -> None:
+    """Single-chunk raw payloads return a read-only memmap (THI-21)."""
+    path = tmp_path / "zc_raw.tet"
+    expected = np.arange(6, dtype=np.float32).reshape(2, 3)
+    tet.write_dataset(path, "a", expected, chunk_shape=(2, 3))
+    f = tet.open(path)
+    arr = f.read_numpy("a")
+    np.testing.assert_array_equal(arr, expected)
+    assert isinstance(arr, np.memmap)
+    assert not arr.flags.writeable
+    # View stays valid after closing the TetFile (separate memmap).
+    del f
+    np.testing.assert_array_equal(arr, expected)
+
+
+def test_read_numpy_copy_fallback_multichunk(tmp_path: Path) -> None:
+    """Multi-chunk layouts copy — tile concatenation ≠ dense row-major in general."""
+    path = tmp_path / "zc_multi.tet"
+    expected = np.arange(12, dtype=np.float32).reshape(4, 3)
+    tet.write_dataset(path, "a", expected, chunk_shape=(2, 3))
+    arr = tet.open(path).read_numpy("a")
+    np.testing.assert_array_equal(arr, expected)
+    assert not isinstance(arr, np.memmap)
+
+
+def test_read_numpy_copy_fallback_partial_selection(tmp_path: Path) -> None:
+    """Selection that only partially covers a tile must copy (not memmap)."""
+    path = tmp_path / "zc_partial.tet"
+    full = np.arange(12, dtype=np.float32).reshape(4, 3)
+    tet.write_dataset(path, "a", full, chunk_shape=(4, 3))
+    arr = tet.open(path).read_numpy(
+        "a",
+        selection=tet.selection_slices(tet.axis_slice(1, 3), tet.axis_slice()),
+    )
+    np.testing.assert_array_equal(arr, full[1:3])
+    assert not isinstance(arr, np.memmap)
+
+
 @pytest.mark.parametrize(
     ("fixture_name", "numpy_dtype", "wire_tag"),
     _INTEGER_READ_CASES,
