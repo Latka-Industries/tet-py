@@ -33,7 +33,6 @@ Agent/onboarding doc for **`~/Code/tet-py`**. Parent project: **[tetration](http
 
 ### Not done
 
-- Integer `write_dataset` dtypes beyond f32/f64 (THI-26)
 - Full convert extras (h5/netcdf/zarr/csv/parquet implementations) — stubs + extras declared; npy/npz shipped
 - Zero-copy mmap → NumPy (THI-21)
 
@@ -47,11 +46,11 @@ Agent/onboarding doc for **`~/Code/tet-py`**. Parent project: **[tetration](http
 | THI-22 | `tet.convert` — npy/npz scaffolding shipped; full extras TBD      |
 | THI-457 | Pin tetration 0.1.12 + DenseBuffer f16/u32/u64 + writer cleanup |
 | THI-23 | `read_numpy` memory budget preflight (unlocked by 0.1.12)      |
-| THI-26 | `write_dataset` integer dtypes (API ready; tet-py still f32/f64) |
+| THI-26 | `write_dataset` layout-v1 dtypes (integers + f16)               |
 | THI-21 | Zero-copy mmap → NumPy                                         |
 | THI-61 | Upstream: unify transform sidecar with `TetWriterSession`      |
 
-**Shipped (Linear done):** THI-20 (PyPI), THI-24 (preview ndarray), THI-25 (fixtures), THI-27 (docs), THI-60 (`f64_row_major` / `row_major` in tetration 0.1.10), THI-453–456 (pre-bump API/CI/tests). Pin work: THI-457 (this PR).
+**Shipped (Linear done):** THI-20 (PyPI), THI-24 (preview ndarray), THI-25 (fixtures), THI-27 (docs), THI-60 (`f64_row_major` / `row_major` in tetration 0.1.10), THI-453–456 (pre-bump), THI-457 (0.1.12 pin), THI-23 (read_numpy preflight). THI-26 (integer write) in flight.
 
 **tetration (upstream):** THI-16 selection preflight (in **0.1.12**) · THI-15 f16/u32/u64 export (in **0.1.12**)
 
@@ -111,7 +110,7 @@ Goal: make **NumPy** the primary Python array surface for `.tet` (read and write
 - [x] `query_execute(..., preview=N)` → `QueryResult.preview` for capped `execution.*_preview` samples — [#7](https://github.com/Latka-Industries/tet-py/issues/7) / THI-24
 - [x] Document RAM budget: `to_numpy` vs `to_spill`, `read_numpy` slice/spill notes ([`operations.md`](operations.md#memory-budget))
 - [x] `read_numpy` budget preflight (tetration 0.1.12 / THI-16) — [#9](https://github.com/Latka-Industries/tet-py/issues/9) / THI-23
-- [ ] Integer `write_dataset` dtypes beyond f32/f64 — [#8](https://github.com/Latka-Industries/tet-py/issues/8) / THI-26
+- [x] Integer / f16 `write_dataset` dtypes (layout v1) — [#8](https://github.com/Latka-Industries/tet-py/issues/8) / THI-26
 - [ ] Defer zero-copy mmap → NumPy until copy path is stable (P2) — [#11](https://github.com/Latka-Industries/tet-py/issues/11)
 
 **Write (NumPy → `.tet`)** — no Rust HDF5/NetCDF in wheels.

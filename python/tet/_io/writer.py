@@ -52,7 +52,11 @@ class TetWriter:
         dim_names: Sequence[str] | None = None,
         coords: Mapping[str, Sequence[str]] | None = None,
     ) -> None:
-        """Queue one row-major C-contiguous array (``float32`` / ``float64``).
+        """Queue one row-major C-contiguous array (layout v1 wire dtypes).
+
+        Supported NumPy dtypes: ``float16``, ``float32``, ``float64``,
+        ``int16``, ``int32``, ``int64``, ``uint8``, ``uint16``, ``uint32``,
+        ``uint64``.
 
         Parameters
         ----------

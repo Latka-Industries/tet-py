@@ -49,16 +49,12 @@ fn dataset_from_buffer(
     buf: numpy_write::NumpyWriteBuffer,
     chunk_shape: Vec<u64>,
 ) -> Result<TetDatasetWrite, CatalogError> {
-    let tags = DATASET_DTYPE_TAG_V1;
-    if tags.is_f32(buf.dtype) {
-        return TetDatasetWrite::f32_row_major(name, &buf.shape, &chunk_shape, buf.data);
+    if !DATASET_DTYPE_TAG_V1.is_supported(buf.dtype) {
+        return Err(CatalogError::InvalidWriteSpec(
+            "unsupported dataset dtype tag for write",
+        ));
     }
-    if tags.is_f64(buf.dtype) {
-        return TetDatasetWrite::f64_row_major(name, &buf.shape, &chunk_shape, buf.data);
-    }
-    Err(CatalogError::InvalidWriteSpec(
-        "unsupported dataset dtype tag (tet-py write supports f32/f64 only)",
-    ))
+    TetDatasetWrite::row_major(name, buf.dtype, &buf.shape, &chunk_shape, buf.data)
 }
 
 /// Optional footer metadata and tiling for :meth:`PyTetWriterSession.write_dataset`.

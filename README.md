@@ -14,7 +14,7 @@ Python bindings for [**Tetration**](https://github.com/Latka-Industries/tetratio
 | Rust core | [`tetration`](https://crates.io/crates/tetration) on crates.io |
 | CLI (no Python) | [`tet`](https://github.com/Latka-Industries/tetration) binary from the main repo |
 
-**Status (0.1.1):** read/query (incl. `preview=N`, TOML queries, `memory_budget_*` kwargs); NumPy ram / spill / sidecar (incl. f16/u32/u64 export + `read_numpy` budget preflight); `TetWriter` / `write_dataset` (f32/f64); `tet.convert` for `.npy`/`.npz` (other formats stubbed via extras). Pins **tetration 0.1.12**. See [CHANGELOG.md](CHANGELOG.md) and [docs/HANDOFF.md](docs/HANDOFF.md).
+**Status (0.1.1):** read/query (incl. `preview=N`, TOML queries, `memory_budget_*` kwargs); NumPy ram / spill / sidecar (incl. f16/u32/u64 export + `read_numpy` budget preflight); `TetWriter` / `write_dataset` (layout-v1 floats + integers); `tet.convert` for `.npy`/`.npz` (other formats stubbed via extras). Pins **tetration 0.1.12**. See [CHANGELOG.md](CHANGELOG.md) and [docs/HANDOFF.md](docs/HANDOFF.md).
 
 Do not `pip install tetration` — that PyPI name is an unrelated math package. Use **`tet-py`** / **`import tet`**.
 
@@ -106,7 +106,7 @@ tet-py/
 
 - [x] **Pre-bump stack** ([THI-452](https://linear.app/thicclatka/issue/THI-452)) — CI mypy, budgets, TOML, tests, convert npy scaffold
 - [x] **Pin tetration 0.1.12** ([THI-457](https://linear.app/thicclatka/issue/THI-457)) — `read_numpy` preflight ([THI-23](https://linear.app/thicclatka/issue/THI-23)), f16/u32/u64 export ([THI-15](https://linear.app/thicclatka/issue/THI-15)), `f64_row_major` writer
-- [ ] **Integer `write_dataset` dtypes** ([THI-26](https://linear.app/thicclatka/issue/THI-26)) — beyond f32/f64
+- [x] **Integer / f16 `write_dataset` dtypes** ([THI-26](https://linear.app/thicclatka/issue/THI-26))
 - [ ] **`tet.convert` full extras** ([THI-22](https://linear.app/thicclatka/issue/THI-22)) — h5/netcdf/zarr/csv/parquet implementations (stubs + extras exist; Rust CLI remains fast path)
 - [ ] **Zero-copy mmap → NumPy** ([THI-21](https://linear.app/thicclatka/issue/THI-21)) — views over mmap’d raw payloads (P2)
 

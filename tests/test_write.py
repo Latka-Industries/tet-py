@@ -10,19 +10,28 @@ import pytest
 import tet
 from tet import TetWriter, write_dataset
 
-# 0.1.9 write surface is float32 / float64 only (integer writes land after 0.1.10 pin).
-_UNSUPPORTED_WRITE_DTYPES = (
+_WRITE_DTYPES = (
+    np.float16,
+    np.float32,
+    np.float64,
+    np.int16,
     np.int32,
     np.int64,
     np.uint8,
     np.uint16,
-    np.int16,
-    np.float16,
+    np.uint32,
+    np.uint64,
+)
+
+_UNSUPPORTED_WRITE_DTYPES = (
+    np.int8,
+    np.bool_,
+    np.complex64,
 )
 
 
-@pytest.mark.parametrize("dtype", [np.float32, np.float64], ids=["f32", "f64"])
-def test_write_read_roundtrip_float(tmp_path: Path, dtype: np.dtype) -> None:
+@pytest.mark.parametrize("dtype", _WRITE_DTYPES, ids=lambda d: np.dtype(d).name)
+def test_write_read_roundtrip(tmp_path: Path, dtype: np.dtype) -> None:
     path = tmp_path / f"roundtrip_{np.dtype(dtype).name}.tet"
     arr = np.arange(6, dtype=dtype).reshape(2, 3)
     write_dataset(path, "temperature", arr, chunk_shape=(2, 3))
@@ -30,7 +39,7 @@ def test_write_read_roundtrip_float(tmp_path: Path, dtype: np.dtype) -> None:
     back = f.read_numpy("temperature")
     np.testing.assert_array_equal(back, arr)
     assert back.dtype == np.dtype(dtype)
-    assert f.mean("temperature") == pytest.approx(float(arr.mean()))
+    assert f.mean("temperature") == pytest.approx(float(arr.astype(np.float64).mean()))
 
 
 def test_writer_session_metadata(tmp_path: Path) -> None:
@@ -67,8 +76,8 @@ def test_write_f64_roundtrip(tmp_path: Path) -> None:
 @pytest.mark.parametrize("dtype", _UNSUPPORTED_WRITE_DTYPES, ids=lambda d: np.dtype(d).name)
 def test_write_rejects_unsupported_dtype(tmp_path: Path, dtype: np.dtype) -> None:
     path = tmp_path / f"reject_{np.dtype(dtype).name}.tet"
-    arr = np.arange(6, dtype=dtype).reshape(2, 3)
-    with pytest.raises(TypeError, match=r"unsupported numpy dtype .*supported: float32, float64"):
+    arr = np.zeros((2, 3), dtype=dtype)
+    with pytest.raises(TypeError, match=r"unsupported numpy dtype .*supported:"):
         write_dataset(path, "values", arr)
     assert not path.exists()
 
@@ -77,7 +86,7 @@ def test_writer_session_rejects_unsupported_dtype(tmp_path: Path) -> None:
     path = tmp_path / "reject_session.tet"
     w = TetWriter.create(path)
     with pytest.raises(TypeError, match=r"unsupported numpy dtype"):
-        w.write_dataset("values", np.ones((2, 3), dtype=np.int32))
+        w.write_dataset("values", np.ones((2, 3), dtype=np.int8))
     assert w.dataset_count == 0
 
 
