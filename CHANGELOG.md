@@ -5,7 +5,17 @@
 ### Planned
 
 - Full `tet.convert` extras implementations ([THI-22](https://linear.app/thicclatka/issue/THI-22))
-- Zero-copy mmap → NumPy ([THI-21](https://linear.app/thicclatka/issue/THI-21))
+
+## [0.2.0] - 2026-10-15
+
+### Added
+
+- Zero-copy `read_numpy`: a single raw (uncompressed) chunk whose payload equals the logical selection returns a read-only `numpy.memmap`; multi-chunk / zstd / partial-tile / strided plans still copy ([THI-21](https://linear.app/thicclatka/issue/THI-21) / [#11](https://github.com/Latka-Industries/tet-py/issues/11))
+
+### Changed
+
+- Pin tetration **0.2.0** from crates.io (writer protocol v2 packages + prior materialize work)
+- Align package version with tetration (**0.2.0**)
 
 ## [0.1.2] - 2026-10-15
 

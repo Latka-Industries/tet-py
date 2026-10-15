@@ -225,14 +225,17 @@ class TetFile:
         -------
         numpy.ndarray
             Row-major array with shape matching the logical selection.
+            A single raw chunk matching the logical selection may return a
+            read-only ``numpy.memmap`` (zero-copy); multi-chunk / zstd / partial
+            tiles copy.
 
         Raises
         ------
         TetError
-            Decode failures, unsupported dtype, or selection larger than the
-            resolved ``memory_budget_bytes`` (tetration 0.1.12+ preflight).
-            Slice the selection or use :meth:`~tet.TetFile.read_spill` when
-            RAM is tight (see ``docs/operations.md`` § Memory budget).
+            Decode failures, unsupported dtype, or (copy path) selection larger
+            than the resolved ``memory_budget_bytes``. Slice the selection or
+            use :meth:`~tet.TetFile.read_spill` when RAM is tight
+            (see ``docs/operations.md`` § Memory budget).
         """
         return read_numpy_array(self, dataset, selection=selection)
 

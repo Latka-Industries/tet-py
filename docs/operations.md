@@ -353,9 +353,9 @@ arr = f.dataset("temperature").to_numpy(f)
 arr = f.read_numpy("a", selection=tet.selection_slices(tet.axis_slice(0, 100)))
 ```
 
-Integer dtypes (`i32`, `u8`, …) are supported where the engine materializes them; `f16` / `u32` / `u64` are not yet exported.
+Integer and `f16` dtypes are supported where the engine materializes them.
 
-**Memory:** `read_numpy` decodes the **full logical selection** into a new array (copy). With tetration **0.1.12+**, oversized selections are **preflight-refused** against the resolved `memory_budget_bytes` (same rule as transform `write: ram`). Slice the selection or use :meth:`~tet.TetFile.read_spill` (wire top-level `spill`) and call :meth:`~tet.SpillReadResult.to_numpy`. See also [tetration query engine — memory budget](https://github.com/Latka-Industries/tetration/blob/main/docs/query_engine.md#memory-budget-and-execution-strategies).
+**Memory / zero-copy:** When the selection is covered by **one raw** (uncompressed) chunk whose payload bytes are exactly the logical row-major selection, `read_numpy` returns a read-only `numpy.memmap` over that region (no decode copy; independent of the `TetFile` handle). Multi-chunk layouts, zstd, strided selections, and partial tiles still decode into an owned array. The copy path **preflight-refuses** oversized selections against `memory_budget_bytes` (same rule as transform `write: ram`). Slice the selection or use :meth:`~tet.TetFile.read_spill` (wire top-level `spill`) and call :meth:`~tet.SpillReadResult.to_numpy`. See also [tetration query engine — memory budget](https://github.com/Latka-Industries/tetration/blob/main/docs/query_engine.md#memory-budget-and-execution-strategies).
 
 ### `read_spill`
 

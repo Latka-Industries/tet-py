@@ -111,7 +111,7 @@ Goal: make **NumPy** the primary Python array surface for `.tet` (read and write
 - [x] Document RAM budget: `to_numpy` vs `to_spill`, `read_numpy` slice/spill notes ([`operations.md`](operations.md#memory-budget))
 - [x] `read_numpy` budget preflight (tetration 0.1.12 / THI-16) — [#9](https://github.com/Latka-Industries/tet-py/issues/9) / THI-23
 - [x] Integer / f16 `write_dataset` dtypes (layout v1) — [#8](https://github.com/Latka-Industries/tet-py/issues/8) / THI-26
-- [ ] Defer zero-copy mmap → NumPy until copy path is stable (P2) — [#11](https://github.com/Latka-Industries/tet-py/issues/11)
+- [x] Zero-copy mmap → NumPy for contiguous raw payloads (`numpy.memmap`; copy fallback) — [#11](https://github.com/Latka-Industries/tet-py/issues/11) / THI-21
 
 **Write (NumPy → `.tet`)** — no Rust HDF5/NetCDF in wheels.
 

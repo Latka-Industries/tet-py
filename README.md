@@ -96,9 +96,10 @@ tet-py/
 - [x] NumPy read — spill (`read_spill`, `transform.to_spill`, `.to_numpy()` loaders)
 - [x] NumPy read — sidecar (`transform.to_sidecar`, `SidecarTransformResult.to_numpy`)
 - [x] NumPy write (`TetWriter`, `write_dataset`)
-- [x] PyPI wheels (`tet-py` 0.1.1); tetration pin now **0.1.12** on crates.io
+- [x] PyPI wheels (`tet-py` 0.2.0); tetration pin **0.2.0** on crates.io
 - [x] Query preview samples (`preview=N`, `QueryResult.preview`) — [#7](https://github.com/Latka-Industries/tet-py/issues/7)
 - [x] CI fixtures vendored in `tests/fixtures/` (no sibling tetration checkout) — [#6](https://github.com/Latka-Industries/tet-py/issues/6)
+- [x] Zero-copy `read_numpy` for contiguous raw payloads ([THI-21](https://linear.app/thicclatka/issue/THI-21))
 
 ## To do
 
@@ -107,8 +108,8 @@ tet-py/
 - [x] **Pre-bump stack** ([THI-452](https://linear.app/thicclatka/issue/THI-452)) — CI mypy, budgets, TOML, tests, convert npy scaffold
 - [x] **Pin tetration 0.1.12** ([THI-457](https://linear.app/thicclatka/issue/THI-457)) — `read_numpy` preflight ([THI-23](https://linear.app/thicclatka/issue/THI-23)), f16/u32/u64 export ([THI-15](https://linear.app/thicclatka/issue/THI-15)), `f64_row_major` writer
 - [x] **Integer / f16 `write_dataset` dtypes** ([THI-26](https://linear.app/thicclatka/issue/THI-26))
+- [x] **Pin tetration 0.2.0 + zero-copy NumPy** ([THI-21](https://linear.app/thicclatka/issue/THI-21))
 - [ ] **`tet.convert` full extras** ([THI-22](https://linear.app/thicclatka/issue/THI-22)) — h5/netcdf/zarr/csv/parquet implementations (stubs + extras exist; Rust CLI remains fast path)
-- [ ] **Zero-copy mmap → NumPy** ([THI-21](https://linear.app/thicclatka/issue/THI-21)) — views over mmap’d raw payloads (P2)
 
 ### Docs
 
