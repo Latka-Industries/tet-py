@@ -12,7 +12,10 @@ pub(crate) struct NumpyWriteBuffer {
     pub data: Vec<u8>,
 }
 
-/// Validate and copy one `NumPy` array into a write buffer (``float32`` / ``float64`` only).
+const SUPPORTED_NUMPY_DTYPES: &str =
+    "float16, float32, float64, int16, int32, int64, uint8, uint16, uint32, uint64";
+
+/// Validate and copy one `NumPy` array into a write buffer (layout v1 wire dtypes).
 pub(crate) fn array_to_write_buffer(
     py: Python<'_>,
     array: &Bound<'_, PyAny>,
@@ -22,7 +25,7 @@ pub(crate) fn array_to_write_buffer(
     let dtype_name: String = arr.getattr("dtype")?.getattr("name")?.extract()?;
     let dtype = dtype_from_numpy_name(&dtype_name).ok_or_else(|| {
         PyTypeError::new_err(format!(
-            "unsupported numpy dtype {dtype_name:?} for write (supported: float32, float64)"
+            "unsupported numpy dtype {dtype_name:?} for write (supported: {SUPPORTED_NUMPY_DTYPES})"
         ))
     })?;
     let shape_py: Vec<usize> = arr.getattr("shape")?.extract()?;
@@ -45,9 +48,18 @@ fn usize_to_u64(d: usize) -> PyResult<u64> {
 }
 
 fn dtype_from_numpy_name(name: &str) -> Option<u32> {
+    let tags = DATASET_DTYPE_TAG_V1;
     match name {
-        "float32" => Some(DATASET_DTYPE_TAG_V1.f32),
-        "float64" => Some(DATASET_DTYPE_TAG_V1.f64),
+        "float16" => Some(tags.f16),
+        "float32" => Some(tags.f32),
+        "float64" => Some(tags.f64),
+        "int16" => Some(tags.i16),
+        "int32" => Some(tags.i32),
+        "int64" => Some(tags.i64),
+        "uint8" => Some(tags.u8),
+        "uint16" => Some(tags.u16),
+        "uint32" => Some(tags.u32),
+        "uint64" => Some(tags.u64),
         _ => None,
     }
 }

@@ -422,7 +422,9 @@ Preflight (tetration 0.1.12+): if the logical selection exceeds the resolved bud
 
 ## `write_dataset` / :class:`~tet.TetWriter`
 
-Write row-major **`float32` / `float64`** NumPy arrays to a new or appended `.tet` file via tetration :class:`TetWriterSession`.
+Write row-major layout-v1 NumPy arrays to a new or appended `.tet` file via tetration :class:`TetWriterSession`.
+
+Supported dtypes: **`float16` / `float32` / `float64`**, **`int16` / `int32` / `int64`**, **`uint8` / `uint16` / `uint32` / `uint64`**.
 
 ```python
 import numpy as np
@@ -568,6 +570,6 @@ Plus: `execute`, `query`, `query_execute`, `plan_only`, `dataset`, `summary`, `i
 | Topic                                | Issue                                                                                                                                    |
 | ------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------- |
 | `read_numpy` memory budget preflight | **Done** in tetration 0.1.12 ([THI-23](https://linear.app/thicclatka/issue/THI-23)) |
-| `write_dataset` integer dtypes       | [tet-py#8](https://github.com/Latka-Industries/tet-py/issues/8)                                                                          |
+| `write_dataset` integer dtypes       | **Done** ([THI-26](https://linear.app/thicclatka/issue/THI-26))                                                                          |
 | `f16` / `u32` / `u64` read export    | [tetration#20](https://github.com/Latka-Industries/tetration/issues/20)                                                                  |
 | Full index                           | [HANDOFF.md — issue tracking](HANDOFF.md#issue-tracking)                                                                                  |
