@@ -5,6 +5,14 @@
 ### Planned
 
 - Full `tet.convert` extras implementations ([THI-22](https://linear.app/thicclatka/issue/THI-22))
+- `.tet.d` open/query and ingest/publish wrappers ([THI-482](https://linear.app/thicclatka/issue/THI-482))
+
+## [0.2.1] - 2026-10-15
+
+### Changed
+
+- Pin tetration **0.2.1** from crates.io (package verify hardening + package fuzz; no Python API change)
+- Align package version with tetration (**0.2.1**)
 
 ## [0.2.0] - 2026-10-15
 
