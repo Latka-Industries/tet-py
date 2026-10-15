@@ -26,6 +26,10 @@ axis : int or str, optional
     Single axis to reduce (mutually exclusive with ``axes``).
 device : str, optional
     Value for ``execution.device`` (e.g. ``"cpu"``, ``"cuda:0"``).
+memory_budget_bytes : int, optional
+    Value for ``execution.memory_budget_bytes`` (hard dense-RAM cap).
+memory_budget_percent : float or int, optional
+    Value for ``execution.memory_budget_percent`` (``100`` = 100% of host RAM).
 raw : bool, default False
     If False, return a scalar (full reduction) or :class:`~tet.QueryResult` (partial).
     If True, return the full wire response ``dict``.

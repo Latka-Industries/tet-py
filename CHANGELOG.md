@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Added
+
+- `memory_budget_bytes=` / `memory_budget_percent=` on `execute`, `query_execute`, reductions, and transform sinks (THI-454)
+
 ### Changed
 
 - CI runs `mypy python/tet` after `maturin develop`; workflow triggers on `dev` as well as `main` (THI-453)
@@ -38,11 +42,9 @@ First public release on [PyPI](https://pypi.org/project/tet-py/0.1.0/). Links **
 ### Changed
 
 - Package layout: `python/tet/` subpackages (`_core`, `_query`, `_io`, `_transform`); public `import tet` API unchanged
+- Rust edition **2024**, MSRV **1.95**, PyO3 **0.28** (abi3-py311)
 
 ### Notes
 
-- Do not `pip install tetration` — unrelated PyPI package. Use **`tet-py`** / **`import tet`**.
 - `tet.core_version()` reports the linked tetration crate (e.g. `0.1.9`); `tet.__version__` is the tet-py release.
-
-[0.1.1]: https://pypi.org/project/tet-py/0.1.1/
-[0.1.0]: https://github.com/Latka-Industries/tet-py/releases/tag/v0.1.0
+- GPU / native HDF5-NetCDF convert codecs are not in the wheel (`default-features = false` on the tetration dependency).
