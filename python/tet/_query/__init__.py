@@ -2,6 +2,7 @@
 
 from tet._query.doc import (
     QUERY_OP_KEYS,
+    apply_execution_hints,
     axis_slice,
     build_query,
     build_selection_query,
@@ -15,6 +16,7 @@ __all__ = [
     "QUERY_OP_KEYS",
     "REDUCTION_OPS",
     "QueryResult",
+    "apply_execution_hints",
     "axis_slice",
     "build_query",
     "build_selection_query",

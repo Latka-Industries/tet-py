@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING, Any, Callable, cast
 import numpy as np
 
 from tet._io.spill import resolve_spill_path
-from tet._query.doc import build_query, transform_op
+from tet._query.doc import apply_execution_hints, build_query, transform_op
 from tet._query.result import QueryResult
 from tet._transform.result import (
     SidecarTransformResult,
@@ -69,7 +69,7 @@ dataset : str
     Catalog dataset name.
 axes, axis : optional
     Axes to fold per-cell stats; omit for one global stat set.
-{extra_params}selection, device, raw : optional
+{extra_params}selection, device, memory_budget_bytes, memory_budget_percent, raw : optional
     Same as :meth:`~tet.TetFile.quantile`. ``raw=True`` returns the wire ``dict``.
 
 Returns
@@ -138,6 +138,8 @@ class TransformOps:
         path: str | PathLike[str] | None = None,
         selection: Sequence[Mapping[str, Any]] | None = None,
         device: str | None = None,
+        memory_budget_bytes: int | None = None,
+        memory_budget_percent: float | int | None = None,
         raw: bool = False,
     ) -> np.ndarray | TransformResult | dict[str, Any]:
         """Run one transform method routed to ram, spill, or sidecar sink.
@@ -158,22 +160,34 @@ class TransformOps:
             write,
             resolve_spill_path(path, self._file.path) if path is not None else None,
         )
-        if device is not None:
-            execution = dict(doc.get("execution") or {})
-            execution["device"] = device
-            doc = {**doc, "execution": execution}
+        doc = apply_execution_hints(
+            doc,
+            device=device,
+            memory_budget_bytes=memory_budget_bytes,
+            memory_budget_percent=memory_budget_percent,
+        )
         if write == TransformWrite.NUMPY:
             # Fast path: Rust materialize → ndarray (write: ram).
             if raw:
                 out = self._file._execute_doc(
-                    doc, device=device, raw=True, scalar_op="transform"
+                    doc,
+                    device=device,
+                    memory_budget_bytes=memory_budget_bytes,
+                    memory_budget_percent=memory_budget_percent,
+                    raw=True,
+                    scalar_op="transform",
                 )
                 assert isinstance(out, dict)
                 return out
             arr = self._file._inner.transform_to_numpy(doc)
             return np.asarray(arr)
         out = self._file._execute_doc(
-            doc, device=device, raw=raw, scalar_op="transform"
+            doc,
+            device=device,
+            memory_budget_bytes=memory_budget_bytes,
+            memory_budget_percent=memory_budget_percent,
+            raw=raw,
+            scalar_op="transform",
         )
         if raw and isinstance(out, dict):
             return out
@@ -249,6 +263,8 @@ def _make_numpy_method(method: str, summary: str) -> NumpyTransformFn:
         axis: int | str | None = None,
         selection: Sequence[Mapping[str, Any]] | None = None,
         device: str | None = None,
+        memory_budget_bytes: int | None = None,
+        memory_budget_percent: float | int | None = None,
         raw: bool = False,
     ) -> np.ndarray | dict[str, Any]:
         return cast(
@@ -261,6 +277,8 @@ def _make_numpy_method(method: str, summary: str) -> NumpyTransformFn:
                 write=TransformWrite.NUMPY,
                 selection=selection,
                 device=device,
+                memory_budget_bytes=memory_budget_bytes,
+                memory_budget_percent=memory_budget_percent,
                 raw=raw,
             ),
         )
@@ -288,6 +306,8 @@ def _make_path_method(
         path: str | PathLike[str] | None = None,
         selection: Sequence[Mapping[str, Any]] | None = None,
         device: str | None = None,
+        memory_budget_bytes: int | None = None,
+        memory_budget_percent: float | int | None = None,
         raw: bool = False,
     ) -> TransformResult | dict[str, Any]:
         return cast(
@@ -301,6 +321,8 @@ def _make_path_method(
                 path=path,
                 selection=selection,
                 device=device,
+                memory_budget_bytes=memory_budget_bytes,
+                memory_budget_percent=memory_budget_percent,
                 raw=raw,
             ),
         )

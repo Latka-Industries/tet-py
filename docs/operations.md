@@ -401,7 +401,7 @@ arr = s.to_numpy()
 
 `to_numpy` only supports **`f32` / `f64`** transforms. Spill files are dtype-native little-endian; use `s.shape` and the source dataset dtype tag to pick `np.float32` vs `np.float64`.
 
-High-level transform methods accept `device=` only. To raise the budget for one call, build the wire document yourself (`execution.memory_budget_bytes` or `memory_budget_percent`) and use the native materialize path, or execute with `raw=True` to inspect `execution.memory_budget_bytes` after a plan.
+High-level execute / reduction / transform methods accept `device=`, `memory_budget_bytes=`, and `memory_budget_percent=` — these merge into the query `execution` block before run (same precedence as the CLI). Use `raw=True` to inspect the resolved `execution.memory_budget_bytes` on the response. This does **not** add a `read_numpy` preflight (still THI-23 / upstream THI-16).
 
 ### `read_numpy`
 
