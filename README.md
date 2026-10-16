@@ -35,6 +35,21 @@ with tet.open("data.tet") as f:
 
 More examples: [Python quick start](https://docs.tetration.sh/python/quick-start) · [operations](https://docs.tetration.sh/python/operations) · [NumPy](https://docs.tetration.sh/python/numpy)
 
+## Convert
+
+`tet.convert` writes one `.tet` from a foreign file. `.npy` and multi-member `.npz` are in the core wheel. Other formats are optional extras: `tet-py[h5]`, `[netcdf]`, `[zarr]`, `[csv]`, `[parquet]`, or `[convert]` for all of them.
+
+| Extra | What it imports |
+| --- | --- |
+| *(core)* | `.npy` (one dataset), `.npz` (every member) |
+| `h5` | HDF5 datasets, groups as `parent/child` names |
+| `netcdf` | NetCDF variables, including groups |
+| `zarr` | Zarr v2 and v3 directory stores |
+| `csv` | `.csv` / `.tsv` numeric columns, plus text columns as `int64` category codes (`tetration_categories`) |
+| `parquet` | Parquet numeric columns and UTF-8 category columns |
+
+Compared with Rust `tet convert`: Python does not apply CF scale/offset, chunks the whole array unless you pass `chunk_shape`, and can read codecs the Rust importer skips when the extra library can decode them. Columns that are not layout-v1 numeric (or category text) are omitted.
+
 ## Documentation
 
 | Topic | Where |
