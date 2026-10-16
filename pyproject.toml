@@ -27,10 +27,10 @@ dependencies = ["numpy>=2.0"]
 
 [project.optional-dependencies]
 dev = ["pytest>=8.0", "maturin>=1.7", "mypy>=1.13", "numpy>=2.0"]
-# Phase 3 convert extras (THI-22) — npy/npz need no extra; others stubbed until wired.
+# Convert extras (THI-484). npy/npz need no extra. zarr 3 reads v2 and v3 stores.
 h5 = ["h5py>=3.10"]
 netcdf = ["netCDF4>=1.6"]
-zarr = ["zarr>=2.16"]
+zarr = ["zarr>=3"]
 csv = ["pandas>=2.0"]
 parquet = ["pyarrow>=14.0"]
 convert = [
