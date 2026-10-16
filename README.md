@@ -29,7 +29,7 @@ import tet
 
 with tet.open("data.tet") as f:
     print(f.mean("temperature"), f.quantile("temperature", 0.5))
-    arr = f.read_numpy("temperature")                 # ram (memmap when single-chunk raw)
+    arr = f.read_numpy("temperature")                 # ram (memmap for full-width raw slabs)
     z = f.transform.to_numpy.zscore("temperature")  # transform → ndarray
 ```
 
