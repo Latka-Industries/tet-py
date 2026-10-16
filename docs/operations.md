@@ -565,6 +565,24 @@ Plus: `execute`, `query`, `query_execute`, `plan_only`, `dataset`, `summary`, `i
 
 ---
 
+## Packages
+
+`tet.open` on a `.tet.d` directory reads `CURRENT` and mmaps that generation's `packed.tet`. Catalog queries and `read_numpy` use that sealed file.
+
+```python
+import tet
+from tet import write_dataset
+
+write_dataset("part.tet", "values", arr)
+tet.ingest("demo.tet.d", "part.tet", create=True)
+tet.publish("demo.tet.d", ["part"])
+with tet.open("demo.tet.d") as f:
+    f.mean("values")
+    f.read_numpy("values")
+```
+
+`ingest` copies one sealed `.tet` into `staging/<session>/` and writes `PART_META`. `publish` merges the named parts, seals `generations/<G>/packed.tet`, and updates `CURRENT`. Pass `generation=` to choose `G`; the default is one past the current pointer. This does not expose concurrent shard writers.
+
 ## Planned improvements (tracking)
 
 | Topic                                | Issue                                                                                                                                    |

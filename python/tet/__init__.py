@@ -8,6 +8,7 @@ or as module-level exports.
 from __future__ import annotations
 
 from os import PathLike
+from pathlib import Path
 
 import numpy as np
 
@@ -17,6 +18,7 @@ from tet._core.errors import UnknownAxisError, UnknownDatasetError
 from tet.file import TetFile
 from tet._io import SpillReadResult, TetWriter, write_dataset
 from tet.convert import convert
+from tet.package import create, ingest, is_package, publish
 from tet._native import CatalogError, TetError, core_version
 from tet._query import (
     QUERY_OP_KEYS,
@@ -63,24 +65,29 @@ def typing_stub(path: str | PathLike[str]) -> str:
 
 
 def open(path: str | PathLike[str]) -> TetFile:
-    """Open a ``.tet`` file read-only (mmap).
+    """Open a ``.tet`` file or the ``CURRENT`` generation of a ``.tet.d`` package.
 
     Parameters
     ----------
     path : str or path-like
-        Filesystem path; ``~`` expanded.
+        Filesystem path; ``~`` expanded. A directory whose name ends in ``.tet.d``
+        (or that contains ``PROTOCOL``) opens ``generations/<CURRENT>/packed.tet``.
 
     Returns
     -------
     TetFile
-        See :meth:`TetFile.open`.
+        See :meth:`TetFile.open` and :meth:`TetFile.open_package`.
 
     Raises
     ------
     OSError, CatalogError
-        See :meth:`TetFile.open`.
+        See :meth:`TetFile.open`. A package with no published generation raises
+        :class:`CatalogError`.
     """
-    return TetFile.open(path)
+    resolved = Path(path).expanduser()
+    if is_package(resolved):
+        return TetFile.open_package(resolved)
+    return TetFile.open(resolved)
 
 
 __all__ = [
@@ -100,6 +107,10 @@ __all__ = [
     "axis_slice",
     "build_query",
     "convert",
+    "create",
+    "ingest",
+    "is_package",
+    "publish",
     "full_selection",
     "selection_slices",
     "TetError",
