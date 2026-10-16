@@ -52,11 +52,22 @@ def test_read_numpy_zero_copy_contiguous_raw(tmp_path: Path) -> None:
     np.testing.assert_array_equal(arr, expected)
 
 
-def test_read_numpy_copy_fallback_multichunk(tmp_path: Path) -> None:
-    """Multi-chunk layouts copy — tile concatenation ≠ dense row-major in general."""
-    path = tmp_path / "zc_multi.tet"
+def test_read_numpy_zero_copy_full_width_slabs(tmp_path: Path) -> None:
+    """Chunks that split only the leading axis are one row-major span (THI-483)."""
+    path = tmp_path / "zc_slabs.tet"
     expected = np.arange(12, dtype=np.float32).reshape(4, 3)
     tet.write_dataset(path, "a", expected, chunk_shape=(2, 3))
+    arr = tet.open(path).read_numpy("a")
+    np.testing.assert_array_equal(arr, expected)
+    assert isinstance(arr, np.memmap)
+    assert not arr.flags.writeable
+
+
+def test_read_numpy_copy_fallback_partial_trailing_chunk(tmp_path: Path) -> None:
+    """Partial trailing tiles are chunk-raster, so the values copy."""
+    path = tmp_path / "zc_partial_tile.tet"
+    expected = np.arange(6, dtype=np.float32).reshape(2, 3)
+    tet.write_dataset(path, "a", expected, chunk_shape=(2, 2))
     arr = tet.open(path).read_numpy("a")
     np.testing.assert_array_equal(arr, expected)
     assert not isinstance(arr, np.memmap)

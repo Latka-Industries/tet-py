@@ -234,9 +234,10 @@ class TetFile:
         -------
         numpy.ndarray
             Row-major array with shape matching the logical selection.
-            A single raw chunk matching the logical selection may return a
-            read-only ``numpy.memmap`` (zero-copy); multi-chunk / zstd / partial
-            tiles copy.
+            A raw selection that is already one contiguous row-major span may
+            return a read-only ``numpy.memmap`` (one chunk, or several chunks that
+            split only the leading axis). zstd, strided selections, and partial
+            trailing tiles copy.
 
         Raises
         ------

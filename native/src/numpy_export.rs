@@ -1,15 +1,16 @@
 //! Convert tetration dense buffers into `numpy.ndarray`.
 //!
 //! Prefer a zero-copy [`numpy.memmap`](https://numpy.org/doc/stable/reference/generated/numpy.memmap.html)
-//! view when the read plan is one contiguous raw (uncompressed) payload span whose on-disk bytes
-//! already match the logical row-major selection. Otherwise copy via [`DenseBuffer`].
+//! view when raw payloads are one contiguous span whose on-disk bytes already match the logical
+//! row-major selection (one chunk, or full-width slabs along the leading axis). Otherwise copy
+//! via [`DenseBuffer`].
 
 use numpy::{PyArray, PyArrayMethods};
 use pyo3::prelude::*;
 use pyo3::types::{PyAny, PyBytes, PyDict, PyTuple};
 use tetration::catalog::{CHUNK_PAYLOAD_CODEC_V1, DATASET_DTYPE_TAG_V1};
 use tetration::query::{
-    DenseBuffer, DenseMaterializeOutcome, PlannedRead, ReadPlan, plan_read_for_document,
+    plan_read_for_document, DenseBuffer, DenseMaterializeOutcome, PlannedRead, ReadPlan,
 };
 
 /// Contiguous raw byte range covering the full logical selection in on-disk order.
@@ -19,49 +20,100 @@ struct ContiguousRawSpan {
     len: usize,
 }
 
-/// Zero-copy eligibility: **one** raw chunk whose payload bytes are exactly the logical
-/// row-major selection.
+/// Zero-copy eligibility: raw payloads that already are the logical row-major selection.
 ///
-/// Multi-chunk adjacent payloads (tetration `detect_contiguous_raw_span`) are **not** safe to
-/// reshape: tile order is chunk-raster, which differs from dense row-major whenever
-/// `chunk_shape` does not cover full trailing axes (e.g. shape `(2,3)` / chunks `(2,2)`).
-/// Scalar folds can still use that span; `NumPy` views cannot.
-fn detect_single_chunk_raw_view(plan: &ReadPlan, elem_size: usize) -> Option<ContiguousRawSpan> {
-    if plan.chunks.len() != 1 {
+/// One raw chunk is enough. Several chunks are safe when they tile **only the leading
+/// axis** (`chunk_shape` covers every trailing dataset axis) and their payloads are
+/// adjacent in plan order. A partial trailing tile (shape `(2, 3)` / chunks `(2, 2)`)
+/// is chunk-raster, not dense row-major, so it still copies.
+fn detect_contiguous_row_major_view(
+    plan: &ReadPlan,
+    elem_size: usize,
+) -> Option<ContiguousRawSpan> {
+    if plan.chunks.is_empty() || plan.selection_step.iter().any(|&step| step != 1) {
         return None;
     }
-    if plan.selection_step.iter().any(|&s| s != 1) {
+    if !leading_axis_slabs(plan) {
         return None;
     }
     let expected_raw = plan.logical_f32_element_count.checked_mul(elem_size)? as u64;
     if expected_raw == 0 {
         return None;
     }
-    let c = &plan.chunks[0];
-    if c.codec != CHUNK_PAYLOAD_CODEC_V1.raw || c.stored_byte_len != c.raw_byte_len {
+    for chunk in &plan.chunks {
+        if chunk.codec != CHUNK_PAYLOAD_CODEC_V1.raw || chunk.stored_byte_len != chunk.raw_byte_len
+        {
+            return None;
+        }
+    }
+    for pair in plan.chunks.windows(2) {
+        let end = pair[0].payload_offset.checked_add(pair[0].raw_byte_len)?;
+        if end != pair[1].payload_offset {
+            return None;
+        }
+    }
+    let total_raw: u64 = plan.chunks.iter().map(|chunk| chunk.raw_byte_len).sum();
+    if total_raw != expected_raw {
         return None;
     }
-    if c.raw_byte_len != expected_raw {
-        return None;
-    }
-    let start = usize::try_from(c.payload_offset).ok()?;
-    let len = usize::try_from(c.raw_byte_len).ok()?;
+    let start = usize::try_from(plan.chunks[0].payload_offset).ok()?;
+    let len = usize::try_from(total_raw).ok()?;
     Some(ContiguousRawSpan { start, len })
+}
+
+/// True when every chunk shares the same trailing `chunk_index` and leading indices step by 1.
+fn leading_axis_slabs(plan: &ReadPlan) -> bool {
+    let rank = plan.chunk_shape.len();
+    if rank == 0 || plan.dataset_shape.len() != rank {
+        return false;
+    }
+    for axis in 1..rank {
+        if plan.chunk_shape[axis] < plan.dataset_shape[axis] {
+            return false;
+        }
+    }
+    let Some(first) = plan.chunks.first() else {
+        return false;
+    };
+    if first.chunk_index.len() != rank {
+        return false;
+    }
+    for chunk in &plan.chunks {
+        if chunk.chunk_index.len() != rank {
+            return false;
+        }
+        for axis in 1..rank {
+            if chunk.chunk_index[axis] != first.chunk_index[axis] {
+                return false;
+            }
+        }
+    }
+    for pair in plan.chunks.windows(2) {
+        let Some(next) = pair[0].chunk_index[0].checked_add(1) else {
+            return false;
+        };
+        if pair[1].chunk_index[0] != next {
+            return false;
+        }
+    }
+    true
 }
 
 fn wire_dtype_elem_size(dtype: u32) -> Option<usize> {
     let tags = DATASET_DTYPE_TAG_V1;
-    Some(if tags.is_f32(dtype) || tags.is_i32(dtype) || tags.is_u32(dtype) {
-        4
-    } else if tags.is_f64(dtype) || tags.is_i64(dtype) || tags.is_u64(dtype) {
-        8
-    } else if tags.is_u16(dtype) || tags.is_i16(dtype) || tags.is_f16(dtype) {
-        2
-    } else if tags.is_u8(dtype) {
-        1
-    } else {
-        return None;
-    })
+    Some(
+        if tags.is_f32(dtype) || tags.is_i32(dtype) || tags.is_u32(dtype) {
+            4
+        } else if tags.is_f64(dtype) || tags.is_i64(dtype) || tags.is_u64(dtype) {
+            8
+        } else if tags.is_u16(dtype) || tags.is_i16(dtype) || tags.is_f16(dtype) {
+            2
+        } else if tags.is_u8(dtype) {
+            1
+        } else {
+            return None;
+        },
+    )
 }
 
 fn numpy_le_dtype_str(dtype: u32) -> Option<&'static str> {
@@ -145,13 +197,14 @@ pub(crate) fn try_zero_copy_read_numpy<'py>(
     let Some(elem_size) = wire_dtype_elem_size(planned.dtype) else {
         return Ok(None);
     };
-    let Some(span) = detect_single_chunk_raw_view(&planned.read_plan, elem_size) else {
+    let Some(span) = detect_contiguous_row_major_view(&planned.read_plan, elem_size) else {
         return Ok(None);
     };
     // Bounds-check against the open mapping before opening a second memmap.
-    let end = span.start.checked_add(span.len).ok_or_else(|| {
-        PyErr::new::<pyo3::exceptions::PyValueError, _>("payload span overflow")
-    })?;
+    let end = span
+        .start
+        .checked_add(span.len)
+        .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyValueError, _>("payload span overflow"))?;
     if end > mmap.len() {
         return Ok(None);
     }

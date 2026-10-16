@@ -181,10 +181,11 @@ impl PyTetFile {
 
     /// Materialize a selection-only query document into a `numpy.ndarray`.
     ///
-    /// When the read plan is a **single raw** (uncompressed) chunk whose on-disk payload
-    /// equals the logical row-major selection, returns a read-only
+    /// When raw payloads already form the logical row-major selection — one chunk, or
+    /// several chunks that tile only the leading axis and sit in one contiguous span —
+    /// returns a read-only
     /// [`numpy.memmap`](https://numpy.org/doc/stable/reference/generated/numpy.memmap.html)
-    /// over that region (zero-copy). Multi-chunk / zstd / partial tiles copy.
+    /// over that region (zero-copy). zstd, strided selections, and partial trailing tiles copy.
     ///
     /// # Errors
     ///
