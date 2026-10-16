@@ -12,13 +12,18 @@ from pathlib import Path
 
 import tet._native as _native
 
+# Match tetration package layout (`catalog::package`).
+_PACKAGE_SUFFIX = ".tet.d"
+_PROTOCOL_FILE = "PROTOCOL"
+_DEFAULT_SESSION_ID = "s0"
+
 
 def is_package(path: str | PathLike[str]) -> bool:
     """True when ``path`` is a directory that looks like a ``.tet.d`` package."""
     resolved = Path(path).expanduser()
     if not resolved.is_dir():
         return False
-    return resolved.name.endswith(".tet.d") or (resolved / "PROTOCOL").is_file()
+    return resolved.name.endswith(_PACKAGE_SUFFIX) or (resolved / _PROTOCOL_FILE).is_file()
 
 
 def create(path: str | PathLike[str]) -> Path:
@@ -33,7 +38,7 @@ def ingest(
     source: str | PathLike[str],
     *,
     part_id: str | None = None,
-    session_id: str = "s0",
+    session_id: str = _DEFAULT_SESSION_ID,
     create: bool = False,
 ) -> str:
     """Stage ``source`` (a sealed ``.tet``) as one part. Returns the part id.
@@ -53,7 +58,7 @@ def ingest(
     """
     root = Path(package).expanduser()
     src = Path(source).expanduser()
-    if create and not (root / "PROTOCOL").is_file():
+    if create and not (root / _PROTOCOL_FILE).is_file():
         _native.package_create(root)
     chosen = part_id if part_id is not None else _native.part_id_from_path(src)
     return str(_native.package_ingest(root, src, session_id, chosen))

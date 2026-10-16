@@ -517,7 +517,7 @@ build_query("a", selection=sel, min=[1])
 | `SidecarTransformResult.to_numpy(f)`                             | Open sidecar `.tet` → `ndarray`                 |
 | `tet.write_dataset(path, name, array)`                           | Create one-dataset `.tet` from NumPy            |
 | `tet.TetWriter.create(path)`                                     | Buffered multi-dataset writer                   |
-| `tet.convert(src.npy, dst.tet)`                                  | NumPy `.npy`/`.npz` → `.tet` (other formats stubbed) |
+| `tet.convert(src, dst.tet)`                                      | `.npy`/`.npz`/`.csv`/`.tsv` in-core; h5/netcdf/zarr/parquet extras |
 
 `doc` may be a **`dict`**, **JSON string**, or **TOML string**.
 
@@ -590,4 +590,3 @@ with tet.open("demo.tet.d") as f:
 | `read_numpy` memory budget preflight | **Done** in tetration 0.1.12 ([THI-23](https://linear.app/thicclatka/issue/THI-23)) |
 | `write_dataset` integer dtypes       | **Done** ([THI-26](https://linear.app/thicclatka/issue/THI-26))                                                                          |
 | `f16` / `u32` / `u64` read export    | [tetration#20](https://github.com/Latka-Industries/tetration/issues/20)                                                                  |
-| Full index                           | [HANDOFF.md — issue tracking](HANDOFF.md#issue-tracking)                                                                                  |

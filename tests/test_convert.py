@@ -1,9 +1,8 @@
-"""tet.convert: npy/npz in the core wheel, extras when installed."""
+"""tet.convert: npy/npz/csv/tsv in the core wheel, extras when installed."""
 
 from __future__ import annotations
 
 import builtins
-import importlib.util
 import json
 from pathlib import Path
 
@@ -120,8 +119,6 @@ def test_convert_zarr_v2_and_v3(tmp_path: Path) -> None:
 
 
 def test_convert_csv_numeric_and_category(tmp_path: Path) -> None:
-    if importlib.util.find_spec("pandas") is None:
-        pytest.skip("pandas is not installed")
     src = tmp_path / "table.csv"
     src.write_text("temp,label\n1,red\n2,blue\n3,red\n", encoding="utf-8")
     dst = tmp_path / "out.tet"
@@ -133,6 +130,24 @@ def test_convert_csv_numeric_and_category(tmp_path: Path) -> None:
     note = json.loads(attrs["tetration_categories"])
     assert note["missing"] == -1
     assert note["codes"] == {"blue": 1, "red": 0}
+
+
+def test_convert_tsv_and_format_override(tmp_path: Path) -> None:
+    src = tmp_path / "table.tsv"
+    src.write_text("temp\tlabel\n1\tred\n2\tblue\n", encoding="utf-8")
+    dst = tmp_path / "out.tet"
+    tet.convert(src, dst)
+    with tet.open(dst) as f:
+        np.testing.assert_array_equal(f.read_numpy("temp"), np.array([1, 2], dtype=np.int64))
+        np.testing.assert_array_equal(f.read_numpy("label"), np.array([0, 1], dtype=np.int64))
+
+    renamed = tmp_path / "table.txt"
+    renamed.write_text("a\tb\n3\t4\n", encoding="utf-8")
+    forced = tmp_path / "forced.tet"
+    tet.convert(renamed, forced, format="tsv")
+    with tet.open(forced) as f:
+        np.testing.assert_array_equal(f.read_numpy("a"), np.array([3], dtype=np.int64))
+        np.testing.assert_array_equal(f.read_numpy("b"), np.array([4], dtype=np.int64))
 
 
 def test_convert_parquet_numeric_and_category(tmp_path: Path) -> None:

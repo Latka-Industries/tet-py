@@ -2,10 +2,15 @@
 
 ## [Unreleased]
 
-### Planned
+### Added
 
-- Full `tet.convert` extras implementations ([THI-22](https://linear.app/thicclatka/issue/THI-22))
-- `.tet.d` open/query and ingest/publish wrappers ([THI-482](https://linear.app/thicclatka/issue/THI-482))
+- `tet.convert` multi-array `.npz`, core `.csv`/`.tsv`, and optional HDF5 / NetCDF / Zarr / Parquet loaders ([THI-484](https://linear.app/thicclatka/issue/THI-484))
+- `tet.open` on `.tet.d` packages plus `tet.ingest` / `tet.publish` ([THI-482](https://linear.app/thicclatka/issue/THI-482))
+- Zero-copy `read_numpy` for full-width multi-chunk raw slabs ([THI-483](https://linear.app/thicclatka/issue/THI-483))
+
+### Changed
+
+- Pin tetration **0.2.2** from crates.io (package version still **0.2.1** until the release tag)
 
 ## [0.2.1] - 2026-10-15
 
