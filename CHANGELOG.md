@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.2.2] - 2026-10-16
+
 ### Added
 
 - `tet.convert` multi-array `.npz`, core `.csv`/`.tsv`, and optional HDF5 / NetCDF / Zarr / Parquet loaders ([THI-484](https://linear.app/thicclatka/issue/THI-484))
@@ -10,7 +12,7 @@
 
 ### Changed
 
-- Pin tetration **0.2.2** from crates.io (package version still **0.2.1** until the release tag)
+- Pin tetration **0.2.2** from crates.io and align package version (**0.2.2**)
 
 ## [0.2.1] - 2026-10-15
 
