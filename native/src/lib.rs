@@ -13,7 +13,10 @@ use pyo3::create_exception;
 use pyo3::exceptions::PyException;
 use pyo3::prelude::*;
 use pyo3::types::PyAny;
-use tetration::catalog::TetFile as CoreTetFile;
+use tetration::catalog::{
+    ingest_tet_file, part_id_from_path as core_part_id_from_path, publish_parts,
+    TetFile as CoreTetFile, TetPackage,
+};
 use tetration::query::{
     execute_query_document, materialize_query_selection, materialize_query_transform_ram,
     parse_query_json, parse_query_text, validate_query, ExecuteQueryOptions, QueryDocument,
@@ -238,6 +241,78 @@ fn open(path: PathBuf) -> PyResult<PyTetFile> {
     Ok(PyTetFile { inner })
 }
 
+/// Open the `CURRENT` generation of a `.tet.d` package (`packed.tet`).
+///
+/// # Errors
+///
+/// [`CatalogError`] when the path is not a package or no generation is published.
+#[pyfunction]
+#[allow(clippy::needless_pass_by_value)]
+fn open_package(path: PathBuf) -> PyResult<PyTetFile> {
+    let package = TetPackage::open(&path).map_err(|err| catalog_err(&err))?;
+    let inner = package.open_current().map_err(|err| catalog_err(&err))?;
+    Ok(PyTetFile { inner })
+}
+
+/// Create an empty `.tet.d` package directory.
+///
+/// # Errors
+///
+/// [`CatalogError`] when the path already exists or cannot be created.
+#[pyfunction]
+#[allow(clippy::needless_pass_by_value)]
+fn package_create(path: PathBuf) -> PyResult<()> {
+    TetPackage::create(&path).map_err(|err| catalog_err(&err))?;
+    Ok(())
+}
+
+/// Suggest a part id from a source path stem.
+#[pyfunction]
+#[allow(clippy::needless_pass_by_value)]
+fn part_id_from_path(path: PathBuf) -> String {
+    core_part_id_from_path(&path)
+}
+
+/// Copy a sealed `.tet` into `staging/<session_id>/` and write `PART_META`.
+///
+/// # Errors
+///
+/// [`CatalogError`] when the package or source is missing, or the part id collides.
+#[pyfunction]
+#[allow(clippy::needless_pass_by_value)]
+fn package_ingest(
+    package: PathBuf,
+    source: PathBuf,
+    session_id: String,
+    part_id: String,
+) -> PyResult<String> {
+    let pkg = TetPackage::open(&package).map_err(|err| catalog_err(&err))?;
+    let meta =
+        ingest_tet_file(&pkg, &source, session_id, part_id).map_err(|err| catalog_err(&err))?;
+    Ok(meta.part_id)
+}
+
+/// Seal `part_ids` into generation `generation` (`None` = next id after `CURRENT`).
+///
+/// # Errors
+///
+/// [`CatalogError`] when parts are missing, claims overlap, or the publish lock is held.
+#[pyfunction]
+#[allow(clippy::needless_pass_by_value)]
+fn package_publish(
+    package: PathBuf,
+    generation: Option<u64>,
+    part_ids: Vec<String>,
+) -> PyResult<u64> {
+    let pkg = TetPackage::open(&package).map_err(|err| catalog_err(&err))?;
+    let generation = match generation {
+        Some(generation) => generation,
+        None => pkg.next_generation().map_err(|err| catalog_err(&err))?,
+    };
+    publish_parts(&pkg, generation, &part_ids).map_err(|err| catalog_err(&err))?;
+    Ok(generation)
+}
+
 /// Register the `_native` module: exceptions, `open`, `TetFile`, `core_version`.
 #[pymodule]
 fn _native(m: &Bound<'_, PyModule>) -> PyResult<()> {
@@ -246,6 +321,11 @@ fn _native(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add("CatalogError", m.py().get_type::<CatalogError>())?;
     m.add_function(wrap_pyfunction!(core_version, m)?)?;
     m.add_function(wrap_pyfunction!(open, m)?)?;
+    m.add_function(wrap_pyfunction!(open_package, m)?)?;
+    m.add_function(wrap_pyfunction!(package_create, m)?)?;
+    m.add_function(wrap_pyfunction!(part_id_from_path, m)?)?;
+    m.add_function(wrap_pyfunction!(package_ingest, m)?)?;
+    m.add_function(wrap_pyfunction!(package_publish, m)?)?;
     m.add_class::<PyTetFile>()?;
     m.add_class::<writer::PyTetWriterSession>()?;
     m.add_class::<writer::WriteDatasetOptions>()?;

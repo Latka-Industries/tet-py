@@ -62,6 +62,15 @@ class TetFile:
         self._summary_cache: dict[str, Any] | None = None  # parsed summary_json()
 
     @classmethod
+    def open_package(cls, path: str | PathLike[str]) -> TetFile:
+        """Open the ``CURRENT`` generation of a ``.tet.d`` package.
+
+        Pins ``generations/<CURRENT>/packed.tet``, the same file the ``tet`` CLI
+        reads for a package path.
+        """
+        return cls(_native.open_package(_resolve_path(path)))
+
+    @classmethod
     def open(cls, path: str | PathLike[str]) -> TetFile:
         """Open a ``.tet`` file read-only via mmap.
 
