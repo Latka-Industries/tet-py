@@ -1,8 +1,8 @@
-"""Foreign formats → ``.tet`` (THI-484).
+"""Foreign formats → ``.tet``.
 
-``.npy`` and multi-member ``.npz`` ship in the core wheel. HDF5, NetCDF, Zarr v2/v3,
-CSV/TSV, and Parquet need optional extras. Each numeric array or column becomes one
-dataset via :class:`~tet.TetWriter`.
+``.npy``, multi-member ``.npz``, and ``.csv`` / ``.tsv`` ship in the core wheel
+(stdlib ``csv``; no pandas). HDF5, NetCDF, Zarr v2/v3, and Parquet need optional
+extras. Each numeric array or column becomes one dataset via :class:`~tet.TetWriter`.
 
 Rust ``tet convert`` is still the fast path. Intentional Python differences:
 
@@ -28,30 +28,43 @@ import numpy as np
 
 from tet._io.writer import TetWriter
 
+# Match tetration `MetadataLimitsV1::DEFAULT.attr_string_bytes` (footer attr cap).
 _ATTR_STRING_BYTES = 1024
+# Match tetration `convert::category::CATEGORY_ATTR` / `CATEGORY_MISSING`.
 _CATEGORY_ATTR = "tetration_categories"
 _CATEGORY_MISSING = -1
+# Footer history `source` tags (same strings as Rust `tet convert`).
+_HISTORY_H5 = "h5"
+_HISTORY_NETCDF = "nc"
+_HISTORY_ZARR = "zarr"
+_HISTORY_ZARR2 = "zarr2"
+_HISTORY_NPY = "npy"
+_HISTORY_NPZ = "npz"
+_HISTORY_CSV = "csv"
+_HISTORY_PARQUET = "parquet"
+_ZARR_V3_META = "zarr.json"
 
 _EXTRA_BY_KIND: dict[str, tuple[str, str]] = {
     "h5": ("h5", "h5py"),
     "hdf5": ("h5", "h5py"),
     "netcdf": ("netcdf", "netCDF4"),
     "zarr": ("zarr", "zarr"),
-    "csv": ("csv", "pandas"),
     "parquet": ("parquet", "pyarrow"),
 }
 
-_EXTRA_BY_SUFFIX: dict[str, str] = {
+_FORMAT_BY_SUFFIX: dict[str, str] = {
     ".h5": "h5",
     ".hdf5": "h5",
     ".nc": "netcdf",
     ".cdf": "netcdf",
     ".zarr": "zarr",
     ".csv": "csv",
-    ".tsv": "csv",
+    ".tsv": "tsv",
     ".parquet": "parquet",
     ".pq": "parquet",
 }
+
+_SUPPORTED_FORMATS = "npy, npz, h5, netcdf, zarr, csv, tsv, parquet"
 
 # NumPy dtype name → layout-v1 wire dtype. ``bool`` and ``int8`` follow the HDF5
 # importer and land as ``uint8``.
@@ -96,10 +109,11 @@ def convert(
         Destination ``.tet`` path.
     dataset : str, default ``"data"``
         Catalog name for a ``.npy`` source. Other formats name datasets from the
-        source (``.npz`` members, HDF5/NetCDF/Zarr paths, CSV and Parquet columns).
+        source (``.npz`` members, HDF5/NetCDF/Zarr paths, CSV/TSV and Parquet columns).
     format : str, optional
         Force format: ``npy``, ``npz``, ``h5``, ``netcdf``, ``zarr``, ``csv``,
-        ``parquet``. Default: infer from ``src`` suffix.
+        ``tsv``, ``parquet``. Default: infer from ``src`` suffix (``.tsv`` is tab,
+        ``.csv`` is comma — same as Rust ``tet convert``).
     **write_kw
         Forwarded to :meth:`~tet.TetWriter.write_dataset` (for example ``chunk_shape``).
 
@@ -107,6 +121,15 @@ def convert(
     -------
     pathlib.Path
         Path to the written ``.tet`` file.
+
+    Raises
+    ------
+    FileNotFoundError
+        If ``src`` does not exist.
+    ImportError
+        If an optional extra is required but not installed.
+    ValueError
+        If the format cannot be inferred, is unsupported, or no layout-v1 arrays remain.
     """
     src_path = Path(src).expanduser()
     dst_path = Path(dst).expanduser()
@@ -122,17 +145,19 @@ def convert(
 
     if kind == "npy":
         imports = [_Import(dataset, _load_npy(src_path))]
-        history = "npy"
+        history = _HISTORY_NPY
     elif kind == "npz":
         imports = _load_npz(src_path)
-        history = "npz"
-    elif kind in ("h5", "netcdf", "zarr", "csv", "parquet"):
+        history = _HISTORY_NPZ
+    elif kind in ("csv", "tsv"):
+        imports = _load_table(src_path, kind=kind)
+        history = _HISTORY_CSV
+    elif kind in ("h5", "netcdf", "zarr", "parquet"):
         _require(kind, src_path)
         imports, history = _load_extra(kind, src_path)
     else:
         raise ValueError(
-            f"unsupported convert format {kind!r} for {src_path} "
-            "(npy, npz, h5, netcdf, zarr, csv, parquet)"
+            f"unsupported convert format {kind!r} for {src_path} ({_SUPPORTED_FORMATS})"
         )
 
     if not imports:
@@ -146,11 +171,10 @@ def _infer_format(path: Path) -> str:
         return "npy"
     if suffix == ".npz":
         return "npz"
-    if suffix in _EXTRA_BY_SUFFIX:
-        return _EXTRA_BY_SUFFIX[suffix]
+    if suffix in _FORMAT_BY_SUFFIX:
+        return _FORMAT_BY_SUFFIX[suffix]
     raise ValueError(
-        f"cannot infer convert format from {path.name!r}; pass format= "
-        "(npy, npz, h5, netcdf, zarr, csv, parquet)"
+        f"cannot infer convert format from {path.name!r}; pass format= ({_SUPPORTED_FORMATS})"
     )
 
 
@@ -238,15 +262,13 @@ def _load_npz(src: Path) -> list[_Import]:
 
 def _load_extra(kind: str, src: Path) -> tuple[list[_Import], str]:
     if kind == "h5":
-        return _load_h5(src), "h5"
+        return _load_h5(src), _HISTORY_H5
     if kind == "netcdf":
-        return _load_netcdf(src), "nc"
+        return _load_netcdf(src), _HISTORY_NETCDF
     if kind == "zarr":
         return _load_zarr(src)
-    if kind == "csv":
-        return _load_table(src), "csv"
     if kind == "parquet":
-        return _load_parquet(src), "parquet"
+        return _load_parquet(src), _HISTORY_PARQUET
     raise ValueError(f"unsupported convert format {kind!r}")
 
 
@@ -302,7 +324,7 @@ def _load_zarr(src: Path) -> tuple[list[_Import], str]:
     zarr = importlib.import_module("zarr")
 
     store = src
-    history = "zarr" if (store / "zarr.json").is_file() else "zarr2"
+    history = _HISTORY_ZARR if (store / _ZARR_V3_META).is_file() else _HISTORY_ZARR2
     root = zarr.open_group(store, mode="r")
     imports: list[_Import] = []
     _walk_zarr(root, "", imports)
@@ -329,14 +351,14 @@ def _zarr_array(node: Any) -> np.ndarray | None:
     return _as_wire(np.asarray(node[:]))
 
 
-def _load_table(src: Path) -> list[_Import]:
-    suffix = src.suffix.lower()
-    if suffix == ".csv":
-        delimiter = ","
-    elif suffix == ".tsv":
+def _load_table(src: Path, *, kind: str) -> list[_Import]:
+    """Parse a comma (``csv``) or tab (``tsv``) table into 1-D datasets."""
+    if kind == "tsv":
         delimiter = "\t"
+    elif kind == "csv":
+        delimiter = ","
     else:
-        raise ValueError(f"expected a .csv or .tsv path, got extension {suffix!r}")
+        raise ValueError(f"expected csv or tsv, got {kind!r}")
 
     with src.open(newline="", encoding="utf-8-sig") as handle:
         rows = list(csv.reader(handle, delimiter=delimiter))
