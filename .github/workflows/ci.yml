@@ -30,6 +30,8 @@ jobs:
           toolchain: 1.95
 
       - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.13"
 
       - name: Test
         run: |
