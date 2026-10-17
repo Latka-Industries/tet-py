@@ -2,9 +2,15 @@
 
 ## [Unreleased]
 
+## [0.3.4] - 2026-10-17
+
 ### Added
 
-- `tet.open("s3://bucket/prefix")` pins a package (`?generation=N` optional) and range-reads on query. Credentials stay in `TETRATION_S3_*`. Pins tetration **0.3.4**. ([THI-517](https://linear.app/thicclatka/issue/THI-517))
+- `tet.open("s3://bucket/prefix")` pins a package (`?generation=N` optional) and range-reads on query. Credentials stay in `TETRATION_S3_*`. ([THI-517](https://linear.app/thicclatka/issue/THI-517))
+
+### Changed
+
+- Align the package version with tetration **0.3.4** ([THI-517](https://linear.app/thicclatka/issue/THI-517))
 
 ## [0.3.3] - 2026-10-17
 

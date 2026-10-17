@@ -1,7 +1,7 @@
-"""Opened ``.tet`` file: catalog, summary, queries, and reduction helpers.
+"""Opened ``.tet`` file or pinned ``s3://`` package: catalog, summary, queries, and reductions.
 
-The native mmap handle is wrapped by :class:`TetFile`; use :func:`tet.open` as the
-public entry point.
+The native handle is wrapped by :class:`TetFile`; use :func:`tet.open` as the
+public entry point. An ``s3://`` open range-reads; a local file stays mapped.
 """
 
 from __future__ import annotations
@@ -114,15 +114,16 @@ class TetFile:
 
     @property
     def path(self) -> Path:
-        """Resolved path to the open ``.tet`` file."""
+        """Filesystem path of a local ``.tet``, or the ``s3://`` URI of a remote package."""
         return Path(self._inner.path)
 
     @property
     def generation(self) -> int | None:
         """Pinned package / store generation id, or ``None`` for a standalone ``.tet``.
 
-        Set when opened from a ``.tet.d`` package, :class:`~tet.MemoryStore`, or
-        :class:`~tet.S3Store`. The pin is fixed for this handle's lifetime.
+        Set when opened from a ``.tet.d`` package, ``tet.open("s3://…")``,
+        :class:`~tet.MemoryStore`, or :class:`~tet.S3Store`. The pin is fixed for
+        this handle's lifetime.
         """
         return self._inner.generation
 

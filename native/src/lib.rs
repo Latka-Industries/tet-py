@@ -20,8 +20,8 @@ use tetration::catalog::{
     part_id_from_path as core_part_id_from_path, pin_packed_tet, plan_catalog_fetch, publish_parts,
     publish_staged_parts, read_superblock_at, read_tet_summary_at_store, seal_staged_generation,
     stage_part, GenerationPin, LocalStore, MemoryStore, OpenedS3Package, PackageStore,
-    PublishGeneration, ReadAt, S3Config, S3Store, TetFile as CoreTetFile, TetOpenTarget,
-    TetPackage, WritePart,
+    PublishGeneration, ReadAt, S3Config, S3Store, TetFile as CoreTetFile, TetFileSummaryV1,
+    TetOpenTarget, TetPackage, WritePart,
 };
 use tetration::query::{
     execute_query_document, materialize_query_selection, materialize_query_transform_ram,
@@ -75,20 +75,16 @@ fn parse_document(py: Python<'_>, query: &Bound<'_, PyAny>) -> PyResult<QueryDoc
     Ok(doc)
 }
 
-/// Read-only handle to one `.tet` file, or a pinned `s3://` package.
-///
-/// Construct via [`open`] / [`open_package`] / [`open_uri`]. A local file stays mapped for
-/// the object's lifetime. An `s3://` package keeps [`OpenedS3Package`] and range-reads on
-/// each query. Package / store opens pin one generation id.
-#[pyclass(name = "TetFile")]
-struct PyTetFile {
-    inner: Option<CoreTetFile>,
-    /// Pinned `s3://bucket/prefix` package. Queries use the range planner, not a full download.
-    s3: Option<S3PackageHandle>,
-    /// Sealed generation when opened from a package or store pin; `None` for plain `.tet`.
-    generation: Option<u64>,
-    /// Keeps a temp `packed.tet` alive for memory-store opens.
-    _keepalive: Option<TempDir>,
+/// Where the bytes for one [`PyTetFile`] live.
+enum OpenedTet {
+    /// Mapped `.tet` (a real file, or a temp copy of a fully downloaded store object).
+    Local {
+        file: CoreTetFile,
+        /// Keeps a temp `packed.tet` alive for memory-store and `S3Store.open` downloads.
+        _keepalive: Option<TempDir>,
+    },
+    /// Pinned `s3://` package. Queries range-read; they do not download `packed.tet`.
+    S3(S3PackageHandle),
 }
 
 struct S3PackageHandle {
@@ -96,20 +92,63 @@ struct S3PackageHandle {
     uri: String,
 }
 
+/// Bytes a selection or transform materializes from.
+enum SelectionImage<'a> {
+    Mapped(&'a [u8]),
+    Assembled(Vec<u8>),
+}
+
+impl SelectionImage<'_> {
+    fn as_slice(&self) -> &[u8] {
+        match self {
+            Self::Mapped(bytes) => bytes,
+            Self::Assembled(bytes) => bytes,
+        }
+    }
+}
+
+/// Read-only handle to one `.tet` file, or a pinned `s3://` package.
+///
+/// Construct via [`open`] / [`open_package`] / [`open_uri`]. A local file stays mapped for
+/// the object's lifetime. An `s3://` package keeps [`OpenedS3Package`] and range-reads on
+/// each query. Package / store opens pin one generation id.
+#[pyclass(name = "TetFile")]
+struct PyTetFile {
+    source: OpenedTet,
+    /// Sealed generation when opened from a package or store pin; `None` for plain `.tet`.
+    generation: Option<u64>,
+}
+
 impl PyTetFile {
-    fn from_core(inner: CoreTetFile, generation: Option<u64>) -> Self {
+    fn local(file: CoreTetFile, generation: Option<u64>, keepalive: Option<TempDir>) -> Self {
         Self {
-            inner: Some(inner),
-            s3: None,
+            source: OpenedTet::Local {
+                file,
+                _keepalive: keepalive,
+            },
             generation,
-            _keepalive: None,
         }
     }
 
-    fn mmap_file(&self) -> PyResult<&CoreTetFile> {
-        self.inner.as_ref().ok_or_else(|| {
-            TetError::new_err("s3:// package handles range-read; this call needs a local .tet")
-        })
+    fn from_core(inner: CoreTetFile, generation: Option<u64>) -> Self {
+        Self::local(inner, generation, None)
+    }
+
+    fn catalog_summary(&self) -> PyResult<TetFileSummaryV1> {
+        match &self.source {
+            OpenedTet::S3(s3) => s3_summary(&s3.opened),
+            OpenedTet::Local { file, .. } => file.summary().map_err(|err| catalog_err(&err)),
+        }
+    }
+
+    /// Mapped file bytes, or a sparse image of the ranges `doc` touches.
+    fn selection_image<'a>(&'a self, doc: &QueryDocument) -> PyResult<SelectionImage<'a>> {
+        match &self.source {
+            OpenedTet::S3(s3) => Ok(SelectionImage::Assembled(s3_selection_image(
+                &s3.opened, doc,
+            )?)),
+            OpenedTet::Local { file, .. } => Ok(SelectionImage::Mapped(file.mmap())),
+        }
     }
 
     /// Parse `query`, run or plan per `options`, serialize [`QueryResponse`] to JSON.
@@ -126,13 +165,15 @@ impl PyTetFile {
         options: ExecuteQueryOptions,
     ) -> PyResult<String> {
         let doc = parse_document(py, query)?;
-        let response = if let Some(s3) = &self.s3 {
-            query_opened_s3_package(&doc, &s3.opened, execute, options, None, Some(&s3.uri))
-                .map_err(tet_err)?
-        } else {
-            let inner = self.mmap_file()?;
-            execute_query_document(&doc, inner.path(), inner.mmap(), options, None)
-                .map_err(tet_err)?
+        let response = match &self.source {
+            OpenedTet::S3(s3) => {
+                query_opened_s3_package(&doc, &s3.opened, execute, options, None, Some(&s3.uri))
+                    .map_err(tet_err)?
+            }
+            OpenedTet::Local { file, .. } => {
+                execute_query_document(&doc, file.path(), file.mmap(), options, None)
+                    .map_err(tet_err)?
+            }
         };
         serde_json::to_string(&response).map_err(|e| TetError::new_err(e.to_string()))
     }
@@ -140,16 +181,13 @@ impl PyTetFile {
 
 #[pymethods]
 impl PyTetFile {
-    /// Resolved filesystem path to the open `.tet` file.
+    /// Filesystem path of a local `.tet`, or the `s3://` URI of a remote package.
     #[getter]
     fn path(&self) -> String {
-        if let Some(s3) = &self.s3 {
-            return s3.uri.clone();
+        match &self.source {
+            OpenedTet::S3(s3) => s3.uri.clone(),
+            OpenedTet::Local { file, .. } => file.path().display().to_string(),
         }
-        self.inner
-            .as_ref()
-            .map(|inner| inner.path().display().to_string())
-            .unwrap_or_default()
     }
 
     /// Pinned package generation id, or `None` for a standalone `.tet`.
@@ -164,16 +202,12 @@ impl PyTetFile {
     ///
     /// [`CatalogError`] if the catalog cannot be read.
     fn datasets(&self) -> PyResult<Vec<String>> {
-        if let Some(s3) = &self.s3 {
-            let summary = s3_summary(&s3.opened)?;
-            return Ok(summary
-                .datasets
-                .into_iter()
-                .map(|record| record.name)
-                .collect());
-        }
-        let records = self.mmap_file()?.datasets().map_err(|e| catalog_err(&e))?;
-        Ok(records.into_iter().map(|r| r.name).collect())
+        let summary = self.catalog_summary()?;
+        Ok(summary
+            .datasets
+            .into_iter()
+            .map(|record| record.name)
+            .collect())
     }
 
     /// Footer metadata and catalog summary as a JSON string.
@@ -186,12 +220,7 @@ impl PyTetFile {
     ///
     /// [`CatalogError`] on catalog/summary read failure; [`CatalogError`] if JSON serialization fails.
     fn summary_json(&self) -> PyResult<String> {
-        if let Some(s3) = &self.s3 {
-            let summary = s3_summary(&s3.opened)?;
-            return serde_json::to_string(&summary)
-                .map_err(|e| CatalogError::new_err(e.to_string()));
-        }
-        let summary = self.mmap_file()?.summary().map_err(|e| catalog_err(&e))?;
+        let summary = self.catalog_summary()?;
         serde_json::to_string(&summary).map_err(|e| CatalogError::new_err(e.to_string()))
     }
 
@@ -254,17 +283,16 @@ impl PyTetFile {
     /// [`TetError`] on parse/validation/materialize failures; [`CatalogError`] when catalog-related.
     fn read_numpy(&self, py: Python<'_>, query: &Bound<'_, PyAny>) -> PyResult<Py<PyAny>> {
         let doc = parse_document(py, query)?;
-        if let Some(s3) = &self.s3 {
-            let image = s3_selection_image(&s3.opened, &doc)?;
-            let outcome = materialize_query_selection(&doc, &image).map_err(tet_err)?;
-            return Ok(numpy_export::outcome_to_py(py, outcome)?.unbind());
+        if let OpenedTet::Local { file, .. } = &self.source {
+            let path = file.path().display().to_string();
+            if let Some(view) =
+                numpy_export::try_zero_copy_read_numpy(py, &path, file.mmap(), &doc)?
+            {
+                return Ok(view.unbind());
+            }
         }
-        let inner = self.mmap_file()?;
-        let path = inner.path().display().to_string();
-        if let Some(view) = numpy_export::try_zero_copy_read_numpy(py, &path, inner.mmap(), &doc)? {
-            return Ok(view.unbind());
-        }
-        let outcome = materialize_query_selection(&doc, inner.mmap()).map_err(tet_err)?;
+        let image = self.selection_image(&doc)?;
+        let outcome = materialize_query_selection(&doc, image.as_slice()).map_err(tet_err)?;
         Ok(numpy_export::outcome_to_py(py, outcome)?.unbind())
     }
 
@@ -275,14 +303,12 @@ impl PyTetFile {
     /// Same as [`Self::read_numpy`].
     fn transform_to_numpy(&self, py: Python<'_>, query: &Bound<'_, PyAny>) -> PyResult<Py<PyAny>> {
         let doc = parse_document(py, query)?;
-        if let Some(s3) = &self.s3 {
-            let image = s3_selection_image(&s3.opened, &doc)?;
-            let outcome = materialize_query_transform_ram(&doc, &image, Path::new(&s3.uri), None)
-                .map_err(tet_err)?;
-            return Ok(numpy_export::outcome_to_py(py, outcome)?.unbind());
-        }
-        let inner = self.mmap_file()?;
-        let outcome = materialize_query_transform_ram(&doc, inner.mmap(), inner.path(), None)
+        let image = self.selection_image(&doc)?;
+        let path = match &self.source {
+            OpenedTet::S3(s3) => PathBuf::from(&s3.uri),
+            OpenedTet::Local { file, .. } => file.path().to_path_buf(),
+        };
+        let outcome = materialize_query_transform_ram(&doc, image.as_slice(), &path, None)
             .map_err(tet_err)?;
         Ok(numpy_export::outcome_to_py(py, outcome)?.unbind())
     }
@@ -365,17 +391,15 @@ fn open_s3_package_uri(uri: &str) -> PyResult<PyTetFile> {
     let opened = open_s3_package(uri).map_err(|err| CatalogError::new_err(err.to_string()))?;
     let generation = opened.pin().generation;
     Ok(PyTetFile {
-        inner: None,
-        s3: Some(S3PackageHandle {
+        source: OpenedTet::S3(S3PackageHandle {
             opened,
             uri: uri.to_owned(),
         }),
         generation: Some(generation),
-        _keepalive: None,
     })
 }
 
-fn s3_summary(opened: &OpenedS3Package) -> PyResult<tetration::catalog::TetFileSummaryV1> {
+fn s3_summary(opened: &OpenedS3Package) -> PyResult<TetFileSummaryV1> {
     let pin = opened.pin();
     read_tet_summary_at_store(opened.store(), &pin.object_key, pin.object_len)
         .map_err(|err| catalog_err(&err))
@@ -393,7 +417,7 @@ fn s3_selection_image(opened: &OpenedS3Package, doc: &QueryDocument) -> PyResult
             .map_err(|err| catalog_err(&err))?;
     let planned = plan_read_for_document(doc, &catalog).map_err(tet_err)?;
     let fetch = plan_query_fetch(&pin.object_key, pin.object_len, &sb, &planned.read_plan)
-        .map_err(|err| TetError::new_err(err.to_string()))?;
+        .map_err(|err| catalog_err(&err))?;
     assemble_object_from_ranges(store, &pin.object_key, pin.object_len, &fetch.ranges)
         .map_err(|err| catalog_err(&err))
 }
@@ -433,12 +457,7 @@ fn open_store_pin(store: &impl PackageStore, pin: GenerationPin) -> PyResult<PyT
     let packed_path = dir.path().join("packed.tet");
     std::fs::write(&packed_path, &bytes).map_err(PyErr::from)?;
     let inner = CoreTetFile::open(&packed_path).map_err(PyErr::from)?;
-    Ok(PyTetFile {
-        inner: Some(inner),
-        s3: None,
-        generation: Some(pinned.generation),
-        _keepalive: Some(dir),
-    })
+    Ok(PyTetFile::local(inner, Some(pinned.generation), Some(dir)))
 }
 
 /// Stage a sealed `.tet` file into a [`PackageStore`].
@@ -465,6 +484,17 @@ fn store_publish_parts(
     };
     publish_staged_parts(store, generation, part_ids).map_err(|err| catalog_err(&err))?;
     Ok(generation)
+}
+
+/// CAS-write `CURRENT` to `generation` (`expected` must match the live pointer).
+fn store_cas_publish(
+    store: &impl PackageStore,
+    generation: u64,
+    expected: Option<u64>,
+) -> PyResult<()> {
+    store
+        .publish_generation(generation, expected)
+        .map_err(|err| catalog_err(&err))
 }
 
 /// Seal staged parts without flipping `CURRENT` (lost-CAS tests).
@@ -564,9 +594,7 @@ impl PyMemoryStore {
     /// [`CatalogError::InvalidCurrent`] when `expected` does not match.
     #[pyo3(signature = (generation, *, expected))]
     fn cas_publish(&self, generation: u64, expected: Option<u64>) -> PyResult<()> {
-        self.inner
-            .publish_generation(generation, expected)
-            .map_err(|err| catalog_err(&err))
+        store_cas_publish(&self.inner, generation, expected)
     }
 
     /// Pin a generation (`memory://current` or `memory://g/<id>`) and open `packed.tet`.
@@ -676,11 +704,7 @@ impl PyS3Store {
     /// [`CatalogError`] when the conditional put is rejected (last good generation kept).
     #[pyo3(signature = (generation, *, expected))]
     fn cas_publish(&self, py: Python<'_>, generation: u64, expected: Option<u64>) -> PyResult<()> {
-        py.detach(|| {
-            self.inner
-                .publish_generation(generation, expected)
-                .map_err(|err| catalog_err(&err))
-        })
+        py.detach(|| store_cas_publish(&self.inner, generation, expected))
     }
 
     /// Pin `current` or `g/<id>` and open that generation's `packed.tet`.
