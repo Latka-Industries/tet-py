@@ -584,6 +584,32 @@ with tet.open("demo.tet.d") as f:
 
 `ingest` copies one sealed `.tet` into `staging/<session>/` and writes `PART_META`. `publish` merges the named parts, seals `generations/<G>/packed.tet`, and updates `CURRENT`. Pass `generation=` to choose `G`; the default is one past the current pointer. This does not expose concurrent shard writers.
 
+### S3-compatible store
+
+`S3Store.connect` takes endpoint and credentials as arguments (not embedded in a URI). Parallel writers each call `ingest` with a unique `session_id`; one `publish` seals the generation and CAS-flips `CURRENT`. `open("current")` or `open("g/<id>")` pins once — a later publish does not retarget that handle. `tet.open("s3://…")` is not supported here.
+
+```python
+from tet import S3Store, write_dataset
+
+write_dataset("part.tet", "values", arr)
+store = S3Store.connect(
+    endpoint="http://127.0.0.1:9000",
+    bucket="tetration-test",
+    access_key_id="tetration",
+    secret_access_key="tetration-secret",
+    prefix="demo",
+)
+store.ingest("part.tet", session_id="s0", part_id="values")
+store.publish(["values"])
+pinned = store.open("current")
+assert pinned.generation == 1
+pinned.mean("values")
+```
+
+A lost conditional put leaves the last good generation (`seal` + `cas_publish` expose that path for tests). MinIO tests skip unless `TETRATION_S3_ENDPOINT` is set (same env vars as the Rust crate: `TETRATION_S3_BUCKET`, `TETRATION_S3_ACCESS_KEY`, `TETRATION_S3_SECRET_KEY`, optional `TETRATION_S3_REQUIRED=1`).
+
+`MemoryStore()` speaks the same ingest / publish / pin API without a network backend.
+
 ## Planned improvements (tracking)
 
 | Topic                                | Issue                                                                                                                                    |

@@ -1,8 +1,14 @@
-"""Local ``.tet.d`` packages: open ``CURRENT``, ingest a sealed ``.tet``, publish.
+"""Local ``.tet.d`` packages and store-backed ingest / publish.
 
-These wrap ``tetration`` ``ingest_tet_file`` / ``publish_parts``. They do not start
-concurrent shard writers. :class:`MemoryStore` copies a published generation into
-an in-memory store for URI pin tests (THI-504; no S3).
+Filesystem helpers wrap ``tetration`` ``ingest_tet_file`` / ``publish_parts``. They do
+not start concurrent shard writers.
+
+:class:`MemoryStore` and :class:`S3Store` use the store path
+(``stage_part`` / ``publish_staged_parts``): N writers stage immutable parts, one
+committer seals a generation and CAS-publishes ``CURRENT``. A rejected CAS leaves the
+last good generation. :meth:`~S3Store.open` / :meth:`~MemoryStore.open` pin once —
+advancing ``CURRENT`` later does not retarget an open handle (same rule as 0.3.0 local
+packages).
 """
 
 from __future__ import annotations
@@ -20,20 +26,253 @@ _PROTOCOL_FILE = "PROTOCOL"
 _DEFAULT_SESSION_ID = "s0"
 
 
-class MemoryStore:
-    """In-memory package store seeded from a local ``.tet.d`` (no credentials)."""
+def _resolve_part_id(source: Path, part_id: str | None) -> str:
+    if part_id is not None:
+        return part_id
+    return str(_native.part_id_from_path(source))
 
-    def __init__(self, inner: _native.MemoryStore) -> None:
-        self._inner = inner
+
+class MemoryStore:
+    """In-memory package store for pin tests and store ingest without credentials.
+
+    Construct empty with ``MemoryStore()``, or seed from a local ``.tet.d`` via
+    :meth:`from_package`. Ingest / publish match :class:`S3Store` (same store trait).
+    """
+
+    def __init__(self, inner: _native.MemoryStore | None = None) -> None:
+        self._inner = inner if inner is not None else _native.MemoryStore()
 
     @classmethod
     def from_package(cls, path: str | PathLike[str]) -> MemoryStore:
-        """Copy ``CURRENT`` / ``packed.tet`` from ``path`` into a new memory store."""
+        """Copy ``CURRENT`` / ``packed.tet`` from ``path`` into a new memory store.
+
+        Parameters
+        ----------
+        path
+            Local ``.tet.d`` package directory.
+
+        Raises
+        ------
+        CatalogError
+            When the package has no published generation or I/O fails.
+        """
         return cls(_native.MemoryStore.from_package(Path(path).expanduser()))
 
+    def ingest(
+        self,
+        source: str | PathLike[str],
+        *,
+        part_id: str | None = None,
+        session_id: str = _DEFAULT_SESSION_ID,
+    ) -> str:
+        """Stage ``source`` (a sealed ``.tet``) as one part. Returns the part id.
+
+        Parameters
+        ----------
+        source
+            Existing ``.tet`` file.
+        part_id
+            Staging part id. Default: filesystem-safe stem of ``source``.
+        session_id
+            Staging session directory name. Each parallel writer needs a unique id.
+            Default ``s0``.
+
+        Raises
+        ------
+        CatalogError
+            When the source is missing or the session / part id collides.
+        """
+        src = Path(source).expanduser()
+        chosen = _resolve_part_id(src, part_id)
+        return str(self._inner.ingest(src, session_id=session_id, part_id=chosen))
+
+    def publish(
+        self,
+        part_ids: Sequence[str],
+        *,
+        generation: int | None = None,
+    ) -> int:
+        """Seal ``part_ids`` and CAS-publish ``CURRENT``. Returns the generation id.
+
+        ``generation`` defaults to one past the current pointer (``1`` when unset).
+        """
+        return int(self._inner.publish(list(part_ids), generation=generation))
+
+    def seal(self, part_ids: Sequence[str], *, generation: int) -> int:
+        """Seal ``part_ids`` into ``generation`` without flipping ``CURRENT``.
+
+        Used with :meth:`cas_publish` to exercise a lost conditional put. Prefer
+        :meth:`publish` for the normal seal-and-flip path.
+        """
+        return int(self._inner.seal(list(part_ids), generation))
+
+    def cas_publish(self, generation: int, *, expected: int | None) -> None:
+        """CAS-write ``CURRENT`` to ``generation``.
+
+        Parameters
+        ----------
+        generation
+            Generation id to name in ``CURRENT``.
+        expected
+            Prior ``CURRENT`` value that must still hold (``None`` = create-only).
+
+        Raises
+        ------
+        CatalogError
+            When ``expected`` does not match (last good generation is left as-is).
+        """
+        self._inner.cas_publish(generation, expected=expected)
+
     def open(self, uri: str = "memory://current") -> TetFile:
-        """Pin ``uri`` (``memory://current`` or ``memory://g/<id>``) and open it."""
+        """Pin ``uri`` once and open that generation's ``packed.tet``.
+
+        Parameters
+        ----------
+        uri
+            ``memory://current`` or ``memory://g/<id>``.
+
+        Notes
+        -----
+        Materializes bytes to a temp file so mmap query / ``read_numpy`` work.
+        Advancing ``CURRENT`` later does not retarget this handle.
+        """
         return TetFile.from_native(self._inner.open(uri))
+
+
+class S3Store:
+    """S3-compatible package store (MinIO, AWS, and path-style endpoints).
+
+    Endpoint and credentials are arguments to :meth:`connect` — they are not embedded
+    in ``s3://`` URIs. Use this class for ingest / publish / pin; ``tet.open("s3://…")``
+    is not supported (convert-from-``s3://`` is a later cut).
+    """
+
+    def __init__(self, inner: _native.S3Store) -> None:
+        self._inner = inner
+
+    @classmethod
+    def connect(
+        cls,
+        *,
+        endpoint: str,
+        bucket: str,
+        access_key_id: str,
+        secret_access_key: str,
+        prefix: str = "",
+        region: str = "us-east-1",
+    ) -> S3Store:
+        """Open a bucket (path-style client). Does not create the bucket.
+
+        Parameters
+        ----------
+        endpoint
+            HTTP(S) endpoint, e.g. ``http://127.0.0.1:9000`` for local MinIO.
+        bucket
+            Bucket that holds the package.
+        access_key_id, secret_access_key
+            SigV4 credentials.
+        prefix
+            Package root inside the bucket. Empty means the bucket root.
+        region
+            SigV4 region. MinIO accepts ``us-east-1``.
+
+        Raises
+        ------
+        CatalogError
+            When the endpoint or client configuration is invalid.
+        """
+        return cls(
+            _native.S3Store.connect(
+                endpoint=endpoint,
+                bucket=bucket,
+                access_key_id=access_key_id,
+                secret_access_key=secret_access_key,
+                prefix=prefix,
+                region=region,
+            )
+        )
+
+    def ingest(
+        self,
+        source: str | PathLike[str],
+        *,
+        part_id: str | None = None,
+        session_id: str = _DEFAULT_SESSION_ID,
+    ) -> str:
+        """Stage ``source`` (a sealed ``.tet``) as one part. Returns the part id.
+
+        Parameters
+        ----------
+        source
+            Existing ``.tet`` file (read from the local filesystem, then uploaded).
+        part_id
+            Staging part id. Default: filesystem-safe stem of ``source``.
+        session_id
+            Staging session directory name. Each parallel writer needs a unique id.
+            Default ``s0``.
+
+        Raises
+        ------
+        CatalogError
+            When the source is missing or the session / part id collides.
+        """
+        src = Path(source).expanduser()
+        chosen = _resolve_part_id(src, part_id)
+        return str(self._inner.ingest(src, session_id=session_id, part_id=chosen))
+
+    def publish(
+        self,
+        part_ids: Sequence[str],
+        *,
+        generation: int | None = None,
+    ) -> int:
+        """Seal ``part_ids`` and CAS-publish ``CURRENT``. Returns the generation id.
+
+        ``generation`` defaults to one past the current pointer (``1`` when unset).
+        A rejected conditional put leaves the previous generation's ``packed.tet``.
+        """
+        return int(self._inner.publish(list(part_ids), generation=generation))
+
+    def seal(self, part_ids: Sequence[str], *, generation: int) -> int:
+        """Seal ``part_ids`` into ``generation`` without flipping ``CURRENT``.
+
+        Used with :meth:`cas_publish` to exercise a lost conditional put. Prefer
+        :meth:`publish` for the normal seal-and-flip path.
+        """
+        return int(self._inner.seal(list(part_ids), generation))
+
+    def cas_publish(self, generation: int, *, expected: int | None) -> None:
+        """CAS-write ``CURRENT`` to ``generation``.
+
+        Parameters
+        ----------
+        generation
+            Generation id to name in ``CURRENT``.
+        expected
+            Prior ``CURRENT`` value that must still hold (``None`` = create-only).
+
+        Raises
+        ------
+        CatalogError
+            When the conditional put is rejected (last good generation kept).
+        """
+        self._inner.cas_publish(generation, expected=expected)
+
+    def open(self, pin: str = "current") -> TetFile:
+        """Pin ``current`` or ``g/<id>`` once and open that generation's ``packed.tet``.
+
+        Parameters
+        ----------
+        pin
+            ``current`` (read ``CURRENT`` once) or ``g/<id>`` for an explicit generation.
+
+        Notes
+        -----
+        Same pin rule as local packages and :class:`MemoryStore`: a later publish does
+        not retarget this handle. Materializes to a temp file for mmap query /
+        ``read_numpy``.
+        """
+        return TetFile.from_native(self._inner.open(pin))
 
 
 def is_package(path: str | PathLike[str]) -> bool:
@@ -78,7 +317,7 @@ def ingest(
     src = Path(source).expanduser()
     if create and not (root / _PROTOCOL_FILE).is_file():
         _native.package_create(root)
-    chosen = part_id if part_id is not None else _native.part_id_from_path(src)
+    chosen = _resolve_part_id(src, part_id)
     return str(_native.package_ingest(root, src, session_id, chosen))
 
 
