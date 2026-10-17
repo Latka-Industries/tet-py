@@ -10,7 +10,7 @@ fn main() {
         })
     } else {
         // crates.io / CI build (no sibling checkout): keep in sync with `[dependencies.tetration].version`
-        "0.3.1".to_owned()
+        "0.3.2".to_owned()
     };
     println!("cargo:rustc-env=TETRATION_VERSION={version}");
 }

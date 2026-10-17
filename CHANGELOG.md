@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+## [0.3.2] - 2026-10-17
+
+### Changed
+
+- Pin tetration **0.3.2** from crates.io (cross-host `publishing/<G>` claim) and align package version (**0.3.2**) ([THI-514](https://linear.app/thicclatka/issue/THI-514))
+
 ## [0.3.1] - 2026-10-17
 
 ### Added
