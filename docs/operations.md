@@ -586,7 +586,7 @@ with tet.open("demo.tet.d") as f:
 
 ### S3-compatible store
 
-`S3Store.connect` takes endpoint and credentials as arguments (not embedded in a URI). Parallel writers each call `ingest` with a unique `session_id`; one `publish` seals the generation and CAS-flips `CURRENT`. `open("current")` or `open("g/<id>")` pins once — a later publish does not retarget that handle. `tet.open("s3://…")` is not supported here. `tet.convert("s3://bucket/object.ext", dst)` is a separate path: it downloads that one foreign object (env `TETRATION_S3_ENDPOINT`) and runs the local importer. It does not open a package, and it does not read a Zarr store on S3.
+`S3Store.connect` takes endpoint and credentials as arguments (not embedded in a URI). Parallel writers each call `ingest` with a unique `session_id`; one `publish` seals the generation and CAS-flips `CURRENT`. `open("current")` or `open("g/<id>")` pins once — a later publish does not retarget that handle. `tet.open("s3://bucket/prefix")` (optional `?generation=N`) pins the same way from `TETRATION_S3_*` and range-reads on query; it does not download the whole object. `S3Store.open` still materializes `packed.tet`. `tet.convert("s3://bucket/object.ext", dst)` is a separate path: it downloads that one foreign object and runs the local importer. It does not open a package, and it does not read a Zarr store on S3.
 
 ```python
 from tet import S3Store, write_dataset

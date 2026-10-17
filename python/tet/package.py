@@ -143,9 +143,11 @@ class S3Store:
     """S3-compatible package store (MinIO, AWS, and path-style endpoints).
 
     Endpoint and credentials are arguments to :meth:`connect` — they are not embedded
-    in ``s3://`` URIs. Use this class for ingest / publish / pin; ``tet.open("s3://…")``
-    is not supported. ``tet.convert("s3://bucket/object.ext", …)`` downloads one foreign
-    object (not a package) and runs the local importer.
+    in ``s3://`` URIs. Use this class for ingest / publish / pin.
+    ``tet.open("s3://bucket/prefix")`` pins the same package from ``TETRATION_S3_*``
+    and range-reads on query. :meth:`open` still downloads the whole ``packed.tet``.
+    ``tet.convert("s3://bucket/object.ext", …)`` downloads one foreign object (not a
+    package) and runs the local importer.
     """
 
     def __init__(self, inner: _native.S3Store) -> None:

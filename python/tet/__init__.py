@@ -74,11 +74,13 @@ def open(path: str | PathLike[str]) -> TetFile:
     path : str or path-like
         Filesystem path (``~`` expanded) or URI. A directory whose name ends in
         ``.tet.d`` (or that contains ``PROTOCOL``) pins ``CURRENT`` once.
-        URI forms: ``file://…``, ``path?generation=N``. Use :class:`MemoryStore` for
-        ``memory://``. For S3-compatible ingest / publish / pin use
-        :class:`S3Store.connect` (credentials are not embedded in ``s3://`` URIs;
-        ``tet.open("s3://…")`` is not supported). ``tet.convert`` does accept a
-        single-file ``s3://bucket/object.ext`` and downloads that object first.
+        URI forms: ``file://…``, ``path?generation=N``, ``s3://bucket/prefix``
+        (optional ``?generation=N``). ``s3://`` pins the package with
+        ``TETRATION_S3_*`` and range-reads on query; credentials are not in the URI.
+        Use :class:`MemoryStore` for ``memory://`` and :class:`S3Store` for ingest /
+        publish. ``S3Store.open`` still downloads the whole ``packed.tet``.
+        ``tet.convert("s3://bucket/object.ext")`` is a separate full download of one
+        foreign object.
 
     Returns
     -------
