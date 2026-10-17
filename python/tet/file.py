@@ -63,7 +63,7 @@ class TetFile:
 
     @classmethod
     def from_native(cls, inner: _native.TetFile) -> TetFile:
-        """Wrap an already-opened native handle (URI / MemoryStore opens)."""
+        """Wrap an already-opened native handle (URI / MemoryStore / S3Store opens)."""
         return cls(inner)
 
     @classmethod
@@ -119,7 +119,11 @@ class TetFile:
 
     @property
     def generation(self) -> int | None:
-        """Pinned package generation id, or ``None`` for a standalone ``.tet``."""
+        """Pinned package / store generation id, or ``None`` for a standalone ``.tet``.
+
+        Set when opened from a ``.tet.d`` package, :class:`~tet.MemoryStore`, or
+        :class:`~tet.S3Store`. The pin is fixed for this handle's lifetime.
+        """
         return self._inner.generation
 
     @property

@@ -74,9 +74,10 @@ def open(path: str | PathLike[str]) -> TetFile:
     path : str or path-like
         Filesystem path (``~`` expanded) or URI. A directory whose name ends in
         ``.tet.d`` (or that contains ``PROTOCOL``) pins ``CURRENT`` once.
-        URI forms: ``file://…``, ``path?generation=N``. Use
-        :class:`MemoryStore` for ``memory://`` and :class:`S3Store` for S3-compatible
-        ingest / publish / pin (credentials are not embedded in ``s3://`` URIs).
+        URI forms: ``file://…``, ``path?generation=N``. Use :class:`MemoryStore` for
+        ``memory://``. For S3-compatible ingest / publish / pin use
+        :class:`S3Store.connect` (credentials are not embedded in ``s3://`` URIs;
+        ``tet.open("s3://…")`` is not supported).
 
     Returns
     -------

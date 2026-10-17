@@ -2,14 +2,16 @@
 
 ## [Unreleased]
 
+## [0.3.1] - 2026-10-17
+
 ### Added
 
-- `S3Store.connect` + ingest / publish / pin open against an S3-compatible endpoint (THI-506)
+- `S3Store.connect` + ingest / publish / pin open against an S3-compatible endpoint ([THI-506](https://linear.app/thicclatka/issue/THI-506))
 - Store ingest / publish / seal / CAS helpers on `MemoryStore` (same path as S3)
 
 ### Changed
 
-- Pin tetration **0.3.1** from crates.io (`tetration-s3` feature)
+- Pin tetration **0.3.1** from crates.io (`tetration-s3` feature) and align package version (**0.3.1**)
 
 ## [0.3.0] - 2026-10-17
 

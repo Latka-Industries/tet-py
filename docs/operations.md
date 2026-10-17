@@ -586,8 +586,9 @@ with tet.open("demo.tet.d") as f:
 
 ### S3-compatible store
 
+`S3Store.connect` takes endpoint and credentials as arguments (not embedded in a URI). Parallel writers each call `ingest` with a unique `session_id`; one `publish` seals the generation and CAS-flips `CURRENT`. `open("current")` or `open("g/<id>")` pins once — a later publish does not retarget that handle. `tet.open("s3://…")` is not supported here.
+
 ```python
-import tet
 from tet import S3Store, write_dataset
 
 write_dataset("part.tet", "values", arr)
@@ -600,11 +601,14 @@ store = S3Store.connect(
 )
 store.ingest("part.tet", session_id="s0", part_id="values")
 store.publish(["values"])
-with store.open("current") as f:
-    f.mean("values")
+pinned = store.open("current")
+assert pinned.generation == 1
+pinned.mean("values")
 ```
 
-A lost conditional put leaves the last good generation. Tests against local MinIO skip unless `TETRATION_S3_ENDPOINT` is set (same env vars as the Rust crate).
+A lost conditional put leaves the last good generation (`seal` + `cas_publish` expose that path for tests). MinIO tests skip unless `TETRATION_S3_ENDPOINT` is set (same env vars as the Rust crate: `TETRATION_S3_BUCKET`, `TETRATION_S3_ACCESS_KEY`, `TETRATION_S3_SECRET_KEY`, optional `TETRATION_S3_REQUIRED=1`).
+
+`MemoryStore()` speaks the same ingest / publish / pin API without a network backend.
 
 ## Planned improvements (tracking)
 
