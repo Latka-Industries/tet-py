@@ -2,13 +2,15 @@
 
 ## [Unreleased]
 
+## [0.3.3] - 2026-10-17
+
 ### Added
 
 - `tet.convert` accepts `s3://bucket/object.ext`: full download, then the existing importer. Zarr-on-S3 is not included ([THI-507](https://linear.app/thicclatka/issue/THI-507))
 
 ### Changed
 
-- Pin tetration **0.3.3** from crates.io (package version stays 0.3.2 until the wheel cut)
+- Pin tetration **0.3.3** from crates.io and align the package version (**0.3.3**) ([THI-515](https://linear.app/thicclatka/issue/THI-515))
 
 ## [0.3.2] - 2026-10-17
 

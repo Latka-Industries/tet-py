@@ -10,6 +10,7 @@ Rust ``tet convert`` is still the fast path. Intentional Python differences:
 * the whole array is one chunk unless ``chunk_shape`` is passed (the CLI retile target is ~64 MiB)
 * library codecs the Rust importer skips (HDF5 filters, Zarr blosc) are read when the extra can decode them
 * unsupported columns are omitted; the call fails only when nothing remains
+* an ``s3://bucket/object.ext`` source is downloaded in full, then imported like a local file
 """
 
 from __future__ import annotations
@@ -269,13 +270,21 @@ def _as_wire(array: np.ndarray) -> np.ndarray | None:
     return np.ascontiguousarray(arr)
 
 
+def _reject_object_or_fortran(label: str, array: np.ndarray) -> None:
+    if array.dtype == object:
+        raise ValueError(
+            f"array {label} is an object or pickled dtype; pickling is not supported"
+        )
+    if array.ndim > 1 and array.flags.f_contiguous and not array.flags.c_contiguous:
+        raise ValueError(
+            f"array {label} is Fortran-order; only C-order NumPy arrays are supported"
+        )
+
+
 def _load_npy(src: Path) -> np.ndarray:
     loaded = np.load(src, allow_pickle=False)
     array = np.asarray(loaded)
-    if array.dtype == object:
-        raise ValueError(f"array in {src} is an object or pickled dtype; pickling is not supported")
-    if array.ndim > 1 and array.flags.f_contiguous and not array.flags.c_contiguous:
-        raise ValueError(f"array in {src} is Fortran-order; only C-order NumPy arrays are supported")
+    _reject_object_or_fortran(f"in {src}", array)
     wire = _as_wire(array)
     if wire is None:
         raise ValueError(f"no supported arrays in {src}")
@@ -301,14 +310,7 @@ def _load_npz(src: Path) -> list[_Import]:
                 raise ValueError(f"npz {src} has more than one array named `{name}`")
             seen.add(name)
             array = np.asarray(loaded[key])
-            if array.dtype == object:
-                raise ValueError(
-                    f"array `{name}` is an object or pickled dtype; pickling is not supported"
-                )
-            if array.ndim > 1 and array.flags.f_contiguous and not array.flags.c_contiguous:
-                raise ValueError(
-                    f"array `{name}` is Fortran-order; only C-order NumPy arrays are supported"
-                )
+            _reject_object_or_fortran(f"`{name}`", array)
             wire = _as_wire(array)
             if wire is None:
                 continue

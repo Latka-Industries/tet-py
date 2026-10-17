@@ -77,7 +77,8 @@ def open(path: str | PathLike[str]) -> TetFile:
         URI forms: ``file://…``, ``path?generation=N``. Use :class:`MemoryStore` for
         ``memory://``. For S3-compatible ingest / publish / pin use
         :class:`S3Store.connect` (credentials are not embedded in ``s3://`` URIs;
-        ``tet.open("s3://…")`` is not supported).
+        ``tet.open("s3://…")`` is not supported). ``tet.convert`` does accept a
+        single-file ``s3://bucket/object.ext`` and downloads that object first.
 
     Returns
     -------

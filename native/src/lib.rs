@@ -607,6 +607,12 @@ impl PyS3Store {
     }
 }
 
+/// Bucket-root client using `TETRATION_S3_*` (`S3Config::from_env`). `key` is the full object key.
+fn connect_s3_from_env(bucket: String) -> PyResult<S3Store> {
+    let config = S3Config::from_env(bucket, String::new()).map_err(|err| catalog_err(&err))?;
+    S3Store::connect(config).map_err(|err| catalog_err(&err))
+}
+
 /// Download one object for `tet.convert` (`s3://` single-file sources).
 ///
 /// Credentials come from `TETRATION_S3_*` via [`S3Config::from_env`]. The bucket is the
@@ -619,8 +625,7 @@ impl PyS3Store {
 #[allow(clippy::needless_pass_by_value)]
 fn download_s3_object(py: Python<'_>, bucket: String, key: String) -> PyResult<Vec<u8>> {
     py.detach(|| {
-        let config = S3Config::from_env(bucket, String::new()).map_err(|err| catalog_err(&err))?;
-        let store = S3Store::connect(config).map_err(|err| catalog_err(&err))?;
+        let store = connect_s3_from_env(bucket)?;
         store.read_all(&key).map_err(|err| catalog_err(&err))
     })
 }
@@ -632,12 +637,11 @@ fn download_s3_object(py: Python<'_>, bucket: String, key: String) -> PyResult<V
 /// [`CatalogError`] when the endpoint is unset or the put fails.
 #[pyfunction]
 #[allow(clippy::needless_pass_by_value)]
-fn upload_s3_object(py: Python<'_>, bucket: String, key: String, bytes: Vec<u8>) -> PyResult<()> {
+fn upload_s3_object(py: Python<'_>, bucket: String, key: String, body: Vec<u8>) -> PyResult<()> {
     py.detach(|| {
-        let config = S3Config::from_env(bucket, String::new()).map_err(|err| catalog_err(&err))?;
-        let store = S3Store::connect(config).map_err(|err| catalog_err(&err))?;
+        let store = connect_s3_from_env(bucket)?;
         store
-            .write_part(&key, &bytes)
+            .write_part(&key, &body)
             .map_err(|err| catalog_err(&err))
     })
 }
