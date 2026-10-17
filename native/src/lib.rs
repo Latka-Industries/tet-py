@@ -7,19 +7,19 @@ mod numpy_export;
 mod numpy_write;
 mod writer;
 
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use pyo3::create_exception;
 use pyo3::exceptions::{PyException, PyValueError};
 use pyo3::prelude::*;
 use pyo3::types::PyAny;
 use tempfile::TempDir;
+use tetration::catalog::store::generation_manifest_key;
 use tetration::catalog::{
-    format_generation_id, ingest_tet_file, packed_tet_key,
-    part_id_from_path as core_part_id_from_path, parse_tet_uri, pin_packed_tet, publish_parts,
-    publish_staged_parts, seal_staged_generation, stage_part, GenerationPin, LocalStore,
-    MemoryStore, PackageStore, PublishGeneration, ReadAt, S3Config, S3Store,
-    TetFile as CoreTetFile, TetOpenTarget, TetPackage, WritePart,
+    ingest_tet_file, packed_tet_key, parse_tet_uri, part_id_from_path as core_part_id_from_path,
+    pin_packed_tet, publish_parts, publish_staged_parts, seal_staged_generation, stage_part,
+    GenerationPin, LocalStore, MemoryStore, PackageStore, PublishGeneration, ReadAt, S3Config,
+    S3Store, TetFile as CoreTetFile, TetOpenTarget, TetPackage, WritePart,
 };
 use tetration::query::{
     execute_query_document, materialize_query_selection, materialize_query_transform_ram,
@@ -59,19 +59,15 @@ pub(crate) fn catalog_err(err: &tetration::catalog::CatalogError) -> PyErr {
 /// else TOML), matching the `tet query` CLI. Dicts and other objects go through `json.dumps`.
 /// Runs `validate_query` before returning.
 fn parse_document(py: Python<'_>, query: &Bound<'_, PyAny>) -> PyResult<QueryDocument> {
-    if let Ok(s) = query.extract::<String>() {
-        let doc = parse_query_text(&s, QueryInputFormat::Auto).map_err(tet_err)?;
-        validate_query(&doc).map_err(tet_err)?;
-        return Ok(doc);
-    }
-    if let Ok(s) = query.extract::<&str>() {
-        let doc = parse_query_text(s, QueryInputFormat::Auto).map_err(tet_err)?;
-        validate_query(&doc).map_err(tet_err)?;
-        return Ok(doc);
-    }
-    let json_mod = py.import("json")?;
-    let dumped: String = json_mod.call_method1("dumps", (query,))?.extract()?;
-    let doc = parse_query_json(&dumped).map_err(tet_err)?;
+    let doc = if let Ok(s) = query.extract::<String>() {
+        parse_query_text(&s, QueryInputFormat::Auto).map_err(tet_err)?
+    } else if let Ok(s) = query.extract::<&str>() {
+        parse_query_text(s, QueryInputFormat::Auto).map_err(tet_err)?
+    } else {
+        let json_mod = py.import("json")?;
+        let dumped: String = json_mod.call_method1("dumps", (query,))?.extract()?;
+        parse_query_json(&dumped).map_err(tet_err)?
+    };
     validate_query(&doc).map_err(tet_err)?;
     Ok(doc)
 }
@@ -97,9 +93,7 @@ impl PyTetFile {
             _keepalive: None,
         }
     }
-}
 
-impl PyTetFile {
     /// Parse `query`, run or plan per `options`, serialize [`QueryResponse`] to JSON.
     ///
     /// # Errors
@@ -278,16 +272,14 @@ fn open(path: PathBuf) -> PyResult<PyTetFile> {
 #[pyfunction]
 #[allow(clippy::needless_pass_by_value)]
 fn open_package(path: PathBuf) -> PyResult<PyTetFile> {
-    open_local_package(path, GenerationPin::Current)
+    open_local_package(&path, GenerationPin::Current)
 }
 
-fn open_local_package(path: PathBuf, pin: GenerationPin) -> PyResult<PyTetFile> {
-    let package = TetPackage::open(&path).map_err(|err| catalog_err(&err))?;
+fn open_local_package(path: &Path, pin: GenerationPin) -> PyResult<PyTetFile> {
+    let package = TetPackage::open(path).map_err(|err| catalog_err(&err))?;
     let pinned = match pin {
         GenerationPin::Current => package.pin_current().map_err(|err| catalog_err(&err))?,
-        GenerationPin::Explicit(g) => package
-            .pin_generation(g)
-            .map_err(|err| catalog_err(&err))?,
+        GenerationPin::Explicit(g) => package.pin_generation(g).map_err(|err| catalog_err(&err))?,
     };
     let generation = pinned.generation();
     let inner = pinned.open().map_err(|err| catalog_err(&err))?;
@@ -307,7 +299,7 @@ fn open_uri(uri: &str) -> PyResult<PyTetFile> {
     let parsed = parse_tet_uri(uri).map_err(|e| CatalogError::new_err(e.to_string()))?;
     match parsed.target {
         TetOpenTarget::LocalTet(path) => open(path),
-        TetOpenTarget::LocalPackage { root, generation } => open_local_package(root, generation),
+        TetOpenTarget::LocalPackage { root, generation } => open_local_package(&root, generation),
         TetOpenTarget::StorePackage { .. } => Err(PyValueError::new_err(
             "memory:// URIs need MemoryStore.open(...); use MemoryStore.from_package(path)",
         )),
@@ -362,13 +354,12 @@ fn open_store_pin(store: &impl PackageStore, pin: GenerationPin) -> PyResult<PyT
 /// Stage a sealed `.tet` file into a [`PackageStore`].
 fn store_ingest_path(
     store: &impl PackageStore,
-    source: PathBuf,
-    session_id: String,
-    part_id: String,
+    source: &Path,
+    session_id: &str,
+    part_id: &str,
 ) -> PyResult<String> {
-    let bytes = std::fs::read(&source).map_err(PyErr::from)?;
-    let meta =
-        stage_part(store, &session_id, &part_id, &bytes).map_err(|err| catalog_err(&err))?;
+    let bytes = std::fs::read(source).map_err(PyErr::from)?;
+    let meta = stage_part(store, session_id, part_id, &bytes).map_err(|err| catalog_err(&err))?;
     Ok(meta.part_id)
 }
 
@@ -376,13 +367,13 @@ fn store_ingest_path(
 fn store_publish_parts(
     store: &impl PackageStore,
     generation: Option<u64>,
-    part_ids: Vec<String>,
+    part_ids: &[String],
 ) -> PyResult<u64> {
     let generation = match generation {
         Some(generation) => generation,
         None => next_store_generation(store)?,
     };
-    publish_staged_parts(store, generation, &part_ids).map_err(|err| catalog_err(&err))?;
+    publish_staged_parts(store, generation, part_ids).map_err(|err| catalog_err(&err))?;
     Ok(generation)
 }
 
@@ -390,9 +381,9 @@ fn store_publish_parts(
 fn store_seal_parts(
     store: &impl PackageStore,
     generation: u64,
-    part_ids: Vec<String>,
+    part_ids: &[String],
 ) -> PyResult<u64> {
-    seal_staged_generation(store, generation, &part_ids).map_err(|err| catalog_err(&err))?;
+    seal_staged_generation(store, generation, part_ids).map_err(|err| catalog_err(&err))?;
     Ok(generation)
 }
 
@@ -434,10 +425,7 @@ impl PyMemoryStore {
             .map_err(|err| catalog_err(&err))?;
         mem.write_part(&packed_key, &packed)
             .map_err(|err| catalog_err(&err))?;
-        let manifest_key = format!(
-            "generations/{}/MANIFEST.json",
-            format_generation_id(generation)
-        );
+        let manifest_key = generation_manifest_key(generation);
         if let Ok(manifest) = local.read_all(&manifest_key) {
             mem.write_part(&manifest_key, &manifest)
                 .map_err(|err| catalog_err(&err))?;
@@ -454,13 +442,8 @@ impl PyMemoryStore {
     /// [`CatalogError`] when the source is missing or the session/part id collides.
     #[pyo3(signature = (source, *, session_id, part_id))]
     #[allow(clippy::needless_pass_by_value)]
-    fn ingest(
-        &self,
-        source: PathBuf,
-        session_id: String,
-        part_id: String,
-    ) -> PyResult<String> {
-        store_ingest_path(&self.inner, source, session_id, part_id)
+    fn ingest(&self, source: PathBuf, session_id: String, part_id: String) -> PyResult<String> {
+        store_ingest_path(&self.inner, &source, &session_id, &part_id)
     }
 
     /// Seal `part_ids` and CAS-publish `CURRENT` (`generation=None` → next id).
@@ -469,8 +452,9 @@ impl PyMemoryStore {
     ///
     /// [`CatalogError`] when parts are missing, claims overlap, or the CAS is rejected.
     #[pyo3(signature = (part_ids, *, generation=None))]
+    #[allow(clippy::needless_pass_by_value)]
     fn publish(&self, part_ids: Vec<String>, generation: Option<u64>) -> PyResult<u64> {
-        store_publish_parts(&self.inner, generation, part_ids)
+        store_publish_parts(&self.inner, generation, &part_ids)
     }
 
     /// Seal `part_ids` into `generation` without flipping `CURRENT`.
@@ -478,8 +462,9 @@ impl PyMemoryStore {
     /// # Errors
     ///
     /// [`CatalogError`] when parts are missing, claims overlap, or the publish lock is held.
+    #[allow(clippy::needless_pass_by_value)]
     fn seal(&self, part_ids: Vec<String>, generation: u64) -> PyResult<u64> {
-        store_seal_parts(&self.inner, generation, part_ids)
+        store_seal_parts(&self.inner, generation, &part_ids)
     }
 
     /// CAS-write `CURRENT` to `generation` (`expected` must match the live pointer).
@@ -565,7 +550,7 @@ impl PyS3Store {
         session_id: String,
         part_id: String,
     ) -> PyResult<String> {
-        py.detach(|| store_ingest_path(&self.inner, source, session_id, part_id))
+        py.detach(|| store_ingest_path(&self.inner, &source, &session_id, &part_id))
     }
 
     /// Seal `part_ids` and CAS-publish `CURRENT` (`generation=None` → next id).
@@ -574,13 +559,14 @@ impl PyS3Store {
     ///
     /// [`CatalogError`] when parts are missing, claims overlap, or the CAS is rejected.
     #[pyo3(signature = (part_ids, *, generation=None))]
+    #[allow(clippy::needless_pass_by_value)]
     fn publish(
         &self,
         py: Python<'_>,
         part_ids: Vec<String>,
         generation: Option<u64>,
     ) -> PyResult<u64> {
-        py.detach(|| store_publish_parts(&self.inner, generation, part_ids))
+        py.detach(|| store_publish_parts(&self.inner, generation, &part_ids))
     }
 
     /// Seal `part_ids` into `generation` without flipping `CURRENT`.
@@ -588,8 +574,9 @@ impl PyS3Store {
     /// # Errors
     ///
     /// [`CatalogError`] when parts are missing, claims overlap, or the publish lock is held.
+    #[allow(clippy::needless_pass_by_value)]
     fn seal(&self, py: Python<'_>, part_ids: Vec<String>, generation: u64) -> PyResult<u64> {
-        py.detach(|| store_seal_parts(&self.inner, generation, part_ids))
+        py.detach(|| store_seal_parts(&self.inner, generation, &part_ids))
     }
 
     /// CAS-write `CURRENT` to `generation` (`expected` must match the live pointer).

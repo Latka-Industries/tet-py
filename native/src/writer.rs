@@ -47,14 +47,14 @@ fn extract_coords(
 fn dataset_from_buffer(
     name: String,
     buf: numpy_write::NumpyWriteBuffer,
-    chunk_shape: Vec<u64>,
+    chunk_shape: &[u64],
 ) -> Result<TetDatasetWrite, CatalogError> {
     if !DATASET_DTYPE_TAG_V1.is_supported(buf.dtype) {
         return Err(CatalogError::InvalidWriteSpec(
             "unsupported dataset dtype tag for write",
         ));
     }
-    TetDatasetWrite::row_major(name, buf.dtype, &buf.shape, &chunk_shape, buf.data)
+    TetDatasetWrite::row_major(name, buf.dtype, &buf.shape, chunk_shape, buf.data)
 }
 
 /// Optional footer metadata and tiling for :meth:`PyTetWriterSession.write_dataset`.
@@ -113,6 +113,7 @@ impl PyTetWriterSession {
 impl PyTetWriterSession {
     /// Create a new file at ``path`` on :meth:`commit` (truncates any existing file).
     #[staticmethod]
+    #[allow(clippy::needless_pass_by_value)] // PyO3 extracts `PathBuf` by value from Python paths.
     fn create(path: PathBuf) -> Self {
         Self {
             inner: Some(TetWriterSession::create(path)),
@@ -121,6 +122,7 @@ impl PyTetWriterSession {
 
     /// Open an existing ``.tet`` and queue additional datasets on commit.
     #[staticmethod]
+    #[allow(clippy::needless_pass_by_value)]
     fn open_append(path: PathBuf) -> PyResult<Self> {
         Ok(Self {
             inner: Some(TetWriterSession::open_append(path).map_err(|e| catalog_err(&e))?),
@@ -161,7 +163,7 @@ impl PyTetWriterSession {
             (buf.shape.clone(), BTreeMap::new(), None, None)
         };
         let mut dataset =
-            dataset_from_buffer(name, buf, chunk_shape).map_err(|e| catalog_err(&e))?;
+            dataset_from_buffer(name, buf, &chunk_shape).map_err(|e| catalog_err(&e))?;
         dataset.attrs = attrs;
         dataset.coords = coords;
         dataset.dim_names = dim_names;
