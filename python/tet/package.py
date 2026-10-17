@@ -1,7 +1,8 @@
 """Local ``.tet.d`` packages: open ``CURRENT``, ingest a sealed ``.tet``, publish.
 
 These wrap ``tetration`` ``ingest_tet_file`` / ``publish_parts``. They do not start
-concurrent shard writers.
+concurrent shard writers. :class:`MemoryStore` copies a published generation into
+an in-memory store for URI pin tests (THI-504; no S3).
 """
 
 from __future__ import annotations
@@ -11,11 +12,28 @@ from os import PathLike
 from pathlib import Path
 
 import tet._native as _native
+from tet.file import TetFile
 
 # Match tetration package layout (`catalog::package`).
 _PACKAGE_SUFFIX = ".tet.d"
 _PROTOCOL_FILE = "PROTOCOL"
 _DEFAULT_SESSION_ID = "s0"
+
+
+class MemoryStore:
+    """In-memory package store seeded from a local ``.tet.d`` (no credentials)."""
+
+    def __init__(self, inner: _native.MemoryStore) -> None:
+        self._inner = inner
+
+    @classmethod
+    def from_package(cls, path: str | PathLike[str]) -> MemoryStore:
+        """Copy ``CURRENT`` / ``packed.tet`` from ``path`` into a new memory store."""
+        return cls(_native.MemoryStore.from_package(Path(path).expanduser()))
+
+    def open(self, uri: str = "memory://current") -> TetFile:
+        """Pin ``uri`` (``memory://current`` or ``memory://g/<id>``) and open it."""
+        return TetFile.from_native(self._inner.open(uri))
 
 
 def is_package(path: str | PathLike[str]) -> bool:
