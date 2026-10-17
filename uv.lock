@@ -823,6 +823,12 @@ dev = [
     { name = "numpy" },
     { name = "pytest" },
 ]
+export = [
+    { name = "h5py" },
+    { name = "netcdf4" },
+    { name = "zarr", version = "3.1.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.12'" },
+    { name = "zarr", version = "3.4.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.12'" },
+]
 h5 = [
     { name = "h5py" },
 ]
@@ -840,10 +846,12 @@ zarr = [
 [package.metadata]
 requires-dist = [
     { name = "h5py", marker = "extra == 'convert'", specifier = ">=3.10" },
+    { name = "h5py", marker = "extra == 'export'", specifier = ">=3.10" },
     { name = "h5py", marker = "extra == 'h5'", specifier = ">=3.10" },
     { name = "maturin", marker = "extra == 'dev'", specifier = ">=1.7" },
     { name = "mypy", marker = "extra == 'dev'", specifier = ">=1.13" },
     { name = "netcdf4", marker = "extra == 'convert'", specifier = ">=1.6" },
+    { name = "netcdf4", marker = "extra == 'export'", specifier = ">=1.6" },
     { name = "netcdf4", marker = "extra == 'netcdf'", specifier = ">=1.6" },
     { name = "numpy", specifier = ">=2.0" },
     { name = "numpy", marker = "extra == 'dev'", specifier = ">=2.0" },
@@ -851,9 +859,10 @@ requires-dist = [
     { name = "pyarrow", marker = "extra == 'parquet'", specifier = ">=14.0" },
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=8.0" },
     { name = "zarr", marker = "extra == 'convert'", specifier = ">=3" },
+    { name = "zarr", marker = "extra == 'export'", specifier = ">=3" },
     { name = "zarr", marker = "extra == 'zarr'", specifier = ">=3" },
 ]
-provides-extras = ["dev", "h5", "netcdf", "zarr", "parquet", "convert"]
+provides-extras = ["dev", "h5", "netcdf", "zarr", "parquet", "export", "convert"]
 
 [[package]]
 name = "typing-extensions"

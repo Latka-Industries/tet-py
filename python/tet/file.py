@@ -281,6 +281,21 @@ class TetFile:
         """
         return read_spill_array(self, dataset, path, selection=selection)
 
+    def export(
+        self,
+        dst: str | PathLike[str],
+        *,
+        format: str | None = None,
+    ) -> Path:
+        """Export this ``.tet`` to HDF5, NetCDF, or Zarr.
+
+        See :func:`tet.export`. Requires the matching optional extra
+        (``tet-py[h5]``, ``[netcdf]``, ``[zarr]``, or ``[export]`` / ``[convert]``).
+        """
+        from tet.export import export as export_fn
+
+        return export_fn(self.path, dst, format=format)
+
     def summary(self) -> dict[str, Any]:
         """Return the full catalog summary for this file.
 
