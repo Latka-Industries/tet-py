@@ -10,12 +10,15 @@ mod writer;
 use std::path::PathBuf;
 
 use pyo3::create_exception;
-use pyo3::exceptions::PyException;
+use pyo3::exceptions::{PyException, PyValueError};
 use pyo3::prelude::*;
 use pyo3::types::PyAny;
+use tempfile::TempDir;
 use tetration::catalog::{
-    ingest_tet_file, part_id_from_path as core_part_id_from_path, publish_parts,
-    TetFile as CoreTetFile, TetPackage,
+    format_generation_id, ingest_tet_file, packed_tet_key,
+    part_id_from_path as core_part_id_from_path, parse_tet_uri, pin_packed_tet, publish_parts,
+    GenerationPin, LocalStore, MemoryStore, PackageStore, PublishGeneration, ReadAt,
+    TetFile as CoreTetFile, TetOpenTarget, TetPackage, WritePart,
 };
 use tetration::query::{
     execute_query_document, materialize_query_selection, materialize_query_transform_ram,
@@ -74,10 +77,25 @@ fn parse_document(py: Python<'_>, query: &Bound<'_, PyAny>) -> PyResult<QueryDoc
 
 /// Read-only mmap handle to one `.tet` file (catalog + query engine).
 ///
-/// Construct via [`open`]. The underlying file mapping stays alive for the object's lifetime.
+/// Construct via [`open`] / [`open_package`] / [`open_uri`]. The underlying file mapping
+/// stays alive for the object's lifetime. Package / store opens pin one generation id.
 #[pyclass(name = "TetFile")]
 struct PyTetFile {
     inner: CoreTetFile,
+    /// Sealed generation when opened from a package or store pin; `None` for plain `.tet`.
+    generation: Option<u64>,
+    /// Keeps a temp `packed.tet` alive for memory-store opens.
+    _keepalive: Option<TempDir>,
+}
+
+impl PyTetFile {
+    fn from_core(inner: CoreTetFile, generation: Option<u64>) -> Self {
+        Self {
+            inner,
+            generation,
+            _keepalive: None,
+        }
+    }
 }
 
 impl PyTetFile {
@@ -107,6 +125,12 @@ impl PyTetFile {
     #[getter]
     fn path(&self) -> String {
         self.inner.path().display().to_string()
+    }
+
+    /// Pinned package generation id, or `None` for a standalone `.tet`.
+    #[getter]
+    fn generation(&self) -> Option<u64> {
+        self.generation
     }
 
     /// Dataset names from the catalog (declaration order).
@@ -239,10 +263,13 @@ fn core_version() -> &'static str {
 #[allow(clippy::needless_pass_by_value)] // PyO3 extracts `PathBuf` by value from Python paths.
 fn open(path: PathBuf) -> PyResult<PyTetFile> {
     let inner = CoreTetFile::open(&path).map_err(PyErr::from)?;
-    Ok(PyTetFile { inner })
+    Ok(PyTetFile::from_core(inner, None))
 }
 
 /// Open the `CURRENT` generation of a `.tet.d` package (`packed.tet`).
+///
+/// Pins once via [`TetPackage::pin_current`]; advancing `CURRENT` later does not retarget
+/// this handle.
 ///
 /// # Errors
 ///
@@ -250,9 +277,119 @@ fn open(path: PathBuf) -> PyResult<PyTetFile> {
 #[pyfunction]
 #[allow(clippy::needless_pass_by_value)]
 fn open_package(path: PathBuf) -> PyResult<PyTetFile> {
+    open_local_package(path, GenerationPin::Current)
+}
+
+fn open_local_package(path: PathBuf, pin: GenerationPin) -> PyResult<PyTetFile> {
     let package = TetPackage::open(&path).map_err(|err| catalog_err(&err))?;
-    let inner = package.open_current().map_err(|err| catalog_err(&err))?;
-    Ok(PyTetFile { inner })
+    let pinned = match pin {
+        GenerationPin::Current => package.pin_current().map_err(|err| catalog_err(&err))?,
+        GenerationPin::Explicit(g) => package
+            .pin_generation(g)
+            .map_err(|err| catalog_err(&err))?,
+    };
+    let generation = pinned.generation();
+    let inner = pinned.open().map_err(|err| catalog_err(&err))?;
+    Ok(PyTetFile::from_core(inner, Some(generation)))
+}
+
+/// Open a path or tetration URI (`file://`, local `.tet` / `.tet.d`, `?generation=`).
+///
+/// `memory://` requires [`PyMemoryStore::open`]. `s3://` is not available until 0.3.1.
+///
+/// # Errors
+///
+/// [`CatalogError`] / [`PyValueError`] for unsupported schemes or missing objects.
+#[pyfunction]
+fn open_uri(uri: &str) -> PyResult<PyTetFile> {
+    let parsed = parse_tet_uri(uri).map_err(|e| CatalogError::new_err(e.to_string()))?;
+    match parsed.target {
+        TetOpenTarget::LocalTet(path) => open(path),
+        TetOpenTarget::LocalPackage { root, generation } => open_local_package(root, generation),
+        TetOpenTarget::StorePackage { .. } => Err(PyValueError::new_err(
+            "memory:// URIs need MemoryStore.open(...); use MemoryStore.from_package(path)",
+        )),
+        TetOpenTarget::S3 { .. } => Err(PyValueError::new_err(
+            "s3:// opens are not available until tet-py 0.3.1",
+        )),
+    }
+}
+
+/// In-memory package store seeded from a local `.tet.d` (THI-504; no S3).
+#[pyclass(name = "MemoryStore")]
+struct PyMemoryStore {
+    inner: MemoryStore,
+}
+
+#[pymethods]
+impl PyMemoryStore {
+    /// Copy `CURRENT` (and its `packed.tet` / manifest) from a local package into memory.
+    ///
+    /// # Errors
+    ///
+    /// [`CatalogError`] when the package has no published generation or I/O fails.
+    #[classmethod]
+    #[allow(clippy::needless_pass_by_value)]
+    fn from_package(_cls: &Bound<'_, pyo3::types::PyType>, path: PathBuf) -> PyResult<Self> {
+        let local = LocalStore::new(&path);
+        let Some(generation) = local
+            .current_generation()
+            .map_err(|err| catalog_err(&err))?
+        else {
+            return Err(CatalogError::new_err("package has no CURRENT generation"));
+        };
+        let mem = MemoryStore::new();
+        let packed_key = packed_tet_key(generation);
+        let packed = local
+            .read_all(&packed_key)
+            .map_err(|err| catalog_err(&err))?;
+        mem.write_part(&packed_key, &packed)
+            .map_err(|err| catalog_err(&err))?;
+        let manifest_key = format!(
+            "generations/{}/MANIFEST.json",
+            format_generation_id(generation)
+        );
+        if let Ok(manifest) = local.read_all(&manifest_key) {
+            mem.write_part(&manifest_key, &manifest)
+                .map_err(|err| catalog_err(&err))?;
+        }
+        mem.publish_generation(generation, None)
+            .map_err(|err| catalog_err(&err))?;
+        Ok(Self { inner: mem })
+    }
+
+    /// Pin a generation (`memory://current` or `memory://g/<id>`) and open `packed.tet`.
+    ///
+    /// Materializes the pinned object to a temp file so existing mmap query / `read_numpy`
+    /// paths work. The temp directory lives for the life of the returned handle.
+    ///
+    /// # Errors
+    ///
+    /// [`CatalogError`] / [`PyValueError`] for bad URIs or missing objects.
+    #[pyo3(signature = (uri="memory://current"))]
+    fn open(&self, uri: &str) -> PyResult<PyTetFile> {
+        let parsed = parse_tet_uri(uri).map_err(|e| CatalogError::new_err(e.to_string()))?;
+        let TetOpenTarget::StorePackage { generation } = parsed.target else {
+            return Err(PyValueError::new_err(
+                "MemoryStore.open expects a memory:// URI (e.g. memory://current)",
+            ));
+        };
+        let pin = pin_packed_tet(&self.inner as &dyn PackageStore, generation)
+            .map_err(|err| catalog_err(&err))?;
+        let bytes = self
+            .inner
+            .read_all(&pin.object_key)
+            .map_err(|err| catalog_err(&err))?;
+        let dir = TempDir::new().map_err(PyErr::from)?;
+        let packed_path = dir.path().join("packed.tet");
+        std::fs::write(&packed_path, &bytes).map_err(PyErr::from)?;
+        let inner = CoreTetFile::open(&packed_path).map_err(PyErr::from)?;
+        Ok(PyTetFile {
+            inner,
+            generation: Some(pin.generation),
+            _keepalive: Some(dir),
+        })
+    }
 }
 
 /// Create an empty `.tet.d` package directory.
@@ -323,11 +460,13 @@ fn _native(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(core_version, m)?)?;
     m.add_function(wrap_pyfunction!(open, m)?)?;
     m.add_function(wrap_pyfunction!(open_package, m)?)?;
+    m.add_function(wrap_pyfunction!(open_uri, m)?)?;
     m.add_function(wrap_pyfunction!(package_create, m)?)?;
     m.add_function(wrap_pyfunction!(part_id_from_path, m)?)?;
     m.add_function(wrap_pyfunction!(package_ingest, m)?)?;
     m.add_function(wrap_pyfunction!(package_publish, m)?)?;
     m.add_class::<PyTetFile>()?;
+    m.add_class::<PyMemoryStore>()?;
     m.add_class::<writer::PyTetWriterSession>()?;
     m.add_class::<writer::WriteDatasetOptions>()?;
     Ok(())

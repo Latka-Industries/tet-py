@@ -62,11 +62,16 @@ class TetFile:
         self._summary_cache: dict[str, Any] | None = None  # parsed summary_json()
 
     @classmethod
+    def from_native(cls, inner: _native.TetFile) -> TetFile:
+        """Wrap an already-opened native handle (URI / MemoryStore opens)."""
+        return cls(inner)
+
+    @classmethod
     def open_package(cls, path: str | PathLike[str]) -> TetFile:
         """Open the ``CURRENT`` generation of a ``.tet.d`` package.
 
-        Pins ``generations/<CURRENT>/packed.tet``, the same file the ``tet`` CLI
-        reads for a package path.
+        Pins ``generations/<CURRENT>/packed.tet`` once (THI-504); advancing
+        ``CURRENT`` later does not retarget this handle.
         """
         return cls(_native.open_package(_resolve_path(path)))
 
@@ -111,6 +116,11 @@ class TetFile:
     def path(self) -> Path:
         """Resolved path to the open ``.tet`` file."""
         return Path(self._inner.path)
+
+    @property
+    def generation(self) -> int | None:
+        """Pinned package generation id, or ``None`` for a standalone ``.tet``."""
+        return self._inner.generation
 
     @property
     def dataset_names(self) -> tuple[str, ...]:
