@@ -20,7 +20,7 @@ from tet.file import TetFile
 from tet._io import SpillReadResult, TetWriter, write_dataset
 from tet.convert import convert
 from tet.export import export
-from tet.package import MemoryStore, create, ingest, is_package, publish
+from tet.package import MemoryStore, S3Store, create, ingest, is_package, publish
 from tet._native import CatalogError, TetError, core_version
 from tet._query import (
     QUERY_OP_KEYS,
@@ -75,7 +75,8 @@ def open(path: str | PathLike[str]) -> TetFile:
         Filesystem path (``~`` expanded) or URI. A directory whose name ends in
         ``.tet.d`` (or that contains ``PROTOCOL``) pins ``CURRENT`` once.
         URI forms: ``file://…``, ``path?generation=N``. Use
-        :class:`MemoryStore` for ``memory://`` (no S3 until 0.3.1).
+        :class:`MemoryStore` for ``memory://`` and :class:`S3Store` for S3-compatible
+        ingest / publish / pin (credentials are not embedded in ``s3://`` URIs).
 
     Returns
     -------
@@ -102,6 +103,7 @@ __all__ = [
     "CatalogError",
     "Dataset",
     "MemoryStore",
+    "S3Store",
     "NumpyTransformResult",
     "QUERY_OP_KEYS",
     "QueryResult",

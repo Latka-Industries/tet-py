@@ -584,6 +584,28 @@ with tet.open("demo.tet.d") as f:
 
 `ingest` copies one sealed `.tet` into `staging/<session>/` and writes `PART_META`. `publish` merges the named parts, seals `generations/<G>/packed.tet`, and updates `CURRENT`. Pass `generation=` to choose `G`; the default is one past the current pointer. This does not expose concurrent shard writers.
 
+### S3-compatible store
+
+```python
+import tet
+from tet import S3Store, write_dataset
+
+write_dataset("part.tet", "values", arr)
+store = S3Store.connect(
+    endpoint="http://127.0.0.1:9000",
+    bucket="tetration-test",
+    access_key_id="tetration",
+    secret_access_key="tetration-secret",
+    prefix="demo",
+)
+store.ingest("part.tet", session_id="s0", part_id="values")
+store.publish(["values"])
+with store.open("current") as f:
+    f.mean("values")
+```
+
+A lost conditional put leaves the last good generation. Tests against local MinIO skip unless `TETRATION_S3_ENDPOINT` is set (same env vars as the Rust crate).
+
 ## Planned improvements (tracking)
 
 | Topic                                | Issue                                                                                                                                    |

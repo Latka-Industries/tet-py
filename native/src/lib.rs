@@ -17,7 +17,8 @@ use tempfile::TempDir;
 use tetration::catalog::{
     format_generation_id, ingest_tet_file, packed_tet_key,
     part_id_from_path as core_part_id_from_path, parse_tet_uri, pin_packed_tet, publish_parts,
-    GenerationPin, LocalStore, MemoryStore, PackageStore, PublishGeneration, ReadAt,
+    publish_staged_parts, seal_staged_generation, stage_part, GenerationPin, LocalStore,
+    MemoryStore, PackageStore, PublishGeneration, ReadAt, S3Config, S3Store,
     TetFile as CoreTetFile, TetOpenTarget, TetPackage, WritePart,
 };
 use tetration::query::{
@@ -295,7 +296,8 @@ fn open_local_package(path: PathBuf, pin: GenerationPin) -> PyResult<PyTetFile> 
 
 /// Open a path or tetration URI (`file://`, local `.tet` / `.tet.d`, `?generation=`).
 ///
-/// `memory://` requires [`PyMemoryStore::open`]. `s3://` is not available until 0.3.1.
+/// `memory://` requires [`PyMemoryStore::open`]. `s3://` requires [`PyS3Store::open`]
+/// after [`PyS3Store::connect`] (credentials are not embedded in the URI).
 ///
 /// # Errors
 ///
@@ -310,12 +312,91 @@ fn open_uri(uri: &str) -> PyResult<PyTetFile> {
             "memory:// URIs need MemoryStore.open(...); use MemoryStore.from_package(path)",
         )),
         TetOpenTarget::S3 { .. } => Err(PyValueError::new_err(
-            "s3:// opens are not available until tet-py 0.3.1",
+            "s3:// URIs need S3Store.connect(...).open(...); credentials are not in the URI",
         )),
     }
 }
 
-/// In-memory package store seeded from a local `.tet.d` (THI-504; no S3).
+/// Resolve `current` / `g/<id>` pin text into a [`GenerationPin`].
+fn parse_store_pin(pin: &str) -> PyResult<GenerationPin> {
+    let pin = pin.trim();
+    if pin.is_empty() || pin == "current" {
+        return Ok(GenerationPin::Current);
+    }
+    if let Some(id) = pin.strip_prefix("g/") {
+        let generation = id
+            .parse::<u64>()
+            .map_err(|_| PyValueError::new_err(format!("invalid generation pin: {pin}")))?;
+        return Ok(GenerationPin::Explicit(generation));
+    }
+    Err(PyValueError::new_err(
+        "store pin must be 'current' or 'g/<id>'",
+    ))
+}
+
+/// Next generation after `CURRENT`, or `1` when unset.
+fn next_store_generation(store: &impl PackageStore) -> PyResult<u64> {
+    Ok(store
+        .current_generation()
+        .map_err(|err| catalog_err(&err))?
+        .map_or(1, |current| current + 1))
+}
+
+/// Materialize a pinned store object to a temp `.tet` for mmap query / `read_numpy`.
+fn open_store_pin(store: &impl PackageStore, pin: GenerationPin) -> PyResult<PyTetFile> {
+    let pinned = pin_packed_tet(store, pin).map_err(|err| catalog_err(&err))?;
+    let bytes = store
+        .read_all(&pinned.object_key)
+        .map_err(|err| catalog_err(&err))?;
+    let dir = TempDir::new().map_err(PyErr::from)?;
+    let packed_path = dir.path().join("packed.tet");
+    std::fs::write(&packed_path, &bytes).map_err(PyErr::from)?;
+    let inner = CoreTetFile::open(&packed_path).map_err(PyErr::from)?;
+    Ok(PyTetFile {
+        inner,
+        generation: Some(pinned.generation),
+        _keepalive: Some(dir),
+    })
+}
+
+/// Stage a sealed `.tet` file into a [`PackageStore`].
+fn store_ingest_path(
+    store: &impl PackageStore,
+    source: PathBuf,
+    session_id: String,
+    part_id: String,
+) -> PyResult<String> {
+    let bytes = std::fs::read(&source).map_err(PyErr::from)?;
+    let meta =
+        stage_part(store, &session_id, &part_id, &bytes).map_err(|err| catalog_err(&err))?;
+    Ok(meta.part_id)
+}
+
+/// Seal staged parts and CAS-publish `CURRENT`.
+fn store_publish_parts(
+    store: &impl PackageStore,
+    generation: Option<u64>,
+    part_ids: Vec<String>,
+) -> PyResult<u64> {
+    let generation = match generation {
+        Some(generation) => generation,
+        None => next_store_generation(store)?,
+    };
+    publish_staged_parts(store, generation, &part_ids).map_err(|err| catalog_err(&err))?;
+    Ok(generation)
+}
+
+/// Seal staged parts without flipping `CURRENT` (lost-CAS tests).
+fn store_seal_parts(
+    store: &impl PackageStore,
+    generation: u64,
+    part_ids: Vec<String>,
+) -> PyResult<u64> {
+    seal_staged_generation(store, generation, &part_ids).map_err(|err| catalog_err(&err))?;
+    Ok(generation)
+}
+
+/// In-memory package store seeded from a local `.tet.d` (THI-504).
 #[pyclass(name = "MemoryStore")]
 struct PyMemoryStore {
     inner: MemoryStore,
@@ -323,6 +404,14 @@ struct PyMemoryStore {
 
 #[pymethods]
 impl PyMemoryStore {
+    /// Empty in-memory store (parallel ingest / publish tests).
+    #[new]
+    fn new() -> Self {
+        Self {
+            inner: MemoryStore::new(),
+        }
+    }
+
     /// Copy `CURRENT` (and its `packed.tet` / manifest) from a local package into memory.
     ///
     /// # Errors
@@ -358,6 +447,53 @@ impl PyMemoryStore {
         Ok(Self { inner: mem })
     }
 
+    /// Stage a sealed `.tet` under `staging/<session_id>/`.
+    ///
+    /// # Errors
+    ///
+    /// [`CatalogError`] when the source is missing or the session/part id collides.
+    #[pyo3(signature = (source, *, session_id, part_id))]
+    #[allow(clippy::needless_pass_by_value)]
+    fn ingest(
+        &self,
+        source: PathBuf,
+        session_id: String,
+        part_id: String,
+    ) -> PyResult<String> {
+        store_ingest_path(&self.inner, source, session_id, part_id)
+    }
+
+    /// Seal `part_ids` and CAS-publish `CURRENT` (`generation=None` → next id).
+    ///
+    /// # Errors
+    ///
+    /// [`CatalogError`] when parts are missing, claims overlap, or the CAS is rejected.
+    #[pyo3(signature = (part_ids, *, generation=None))]
+    fn publish(&self, part_ids: Vec<String>, generation: Option<u64>) -> PyResult<u64> {
+        store_publish_parts(&self.inner, generation, part_ids)
+    }
+
+    /// Seal `part_ids` into `generation` without flipping `CURRENT`.
+    ///
+    /// # Errors
+    ///
+    /// [`CatalogError`] when parts are missing, claims overlap, or the publish lock is held.
+    fn seal(&self, part_ids: Vec<String>, generation: u64) -> PyResult<u64> {
+        store_seal_parts(&self.inner, generation, part_ids)
+    }
+
+    /// CAS-write `CURRENT` to `generation` (`expected` must match the live pointer).
+    ///
+    /// # Errors
+    ///
+    /// [`CatalogError::InvalidCurrent`] when `expected` does not match.
+    #[pyo3(signature = (generation, *, expected))]
+    fn cas_publish(&self, generation: u64, expected: Option<u64>) -> PyResult<()> {
+        self.inner
+            .publish_generation(generation, expected)
+            .map_err(|err| catalog_err(&err))
+    }
+
     /// Pin a generation (`memory://current` or `memory://g/<id>`) and open `packed.tet`.
     ///
     /// Materializes the pinned object to a temp file so existing mmap query / `read_numpy`
@@ -374,21 +510,113 @@ impl PyMemoryStore {
                 "MemoryStore.open expects a memory:// URI (e.g. memory://current)",
             ));
         };
-        let pin = pin_packed_tet(&self.inner as &dyn PackageStore, generation)
-            .map_err(|err| catalog_err(&err))?;
-        let bytes = self
-            .inner
-            .read_all(&pin.object_key)
-            .map_err(|err| catalog_err(&err))?;
-        let dir = TempDir::new().map_err(PyErr::from)?;
-        let packed_path = dir.path().join("packed.tet");
-        std::fs::write(&packed_path, &bytes).map_err(PyErr::from)?;
-        let inner = CoreTetFile::open(&packed_path).map_err(PyErr::from)?;
-        Ok(PyTetFile {
-            inner,
-            generation: Some(pin.generation),
-            _keepalive: Some(dir),
+        open_store_pin(&self.inner, generation)
+    }
+}
+
+/// S3-compatible package store (endpoint + credentials as arguments; THI-506).
+#[pyclass(name = "S3Store")]
+struct PyS3Store {
+    inner: S3Store,
+}
+
+#[pymethods]
+impl PyS3Store {
+    /// Connect to an S3-compatible bucket (does not create the bucket).
+    ///
+    /// # Errors
+    ///
+    /// [`CatalogError`] for a bad endpoint / client configuration.
+    #[classmethod]
+    #[pyo3(signature = (*, endpoint, bucket, access_key_id, secret_access_key, prefix="", region="us-east-1"))]
+    #[allow(clippy::too_many_arguments, clippy::needless_pass_by_value)]
+    fn connect(
+        _cls: &Bound<'_, pyo3::types::PyType>,
+        endpoint: String,
+        bucket: String,
+        access_key_id: String,
+        secret_access_key: String,
+        prefix: &str,
+        region: &str,
+    ) -> PyResult<Self> {
+        let inner = S3Store::connect(S3Config {
+            endpoint,
+            bucket,
+            prefix: prefix.to_owned(),
+            region: region.to_owned(),
+            access_key_id,
+            secret_access_key,
         })
+        .map_err(|err| catalog_err(&err))?;
+        Ok(Self { inner })
+    }
+
+    /// Stage a sealed `.tet` under `staging/<session_id>/`.
+    ///
+    /// # Errors
+    ///
+    /// [`CatalogError`] when the source is missing or the session/part id collides.
+    #[pyo3(signature = (source, *, session_id, part_id))]
+    #[allow(clippy::needless_pass_by_value)]
+    fn ingest(
+        &self,
+        py: Python<'_>,
+        source: PathBuf,
+        session_id: String,
+        part_id: String,
+    ) -> PyResult<String> {
+        py.detach(|| store_ingest_path(&self.inner, source, session_id, part_id))
+    }
+
+    /// Seal `part_ids` and CAS-publish `CURRENT` (`generation=None` → next id).
+    ///
+    /// # Errors
+    ///
+    /// [`CatalogError`] when parts are missing, claims overlap, or the CAS is rejected.
+    #[pyo3(signature = (part_ids, *, generation=None))]
+    fn publish(
+        &self,
+        py: Python<'_>,
+        part_ids: Vec<String>,
+        generation: Option<u64>,
+    ) -> PyResult<u64> {
+        py.detach(|| store_publish_parts(&self.inner, generation, part_ids))
+    }
+
+    /// Seal `part_ids` into `generation` without flipping `CURRENT`.
+    ///
+    /// # Errors
+    ///
+    /// [`CatalogError`] when parts are missing, claims overlap, or the publish lock is held.
+    fn seal(&self, py: Python<'_>, part_ids: Vec<String>, generation: u64) -> PyResult<u64> {
+        py.detach(|| store_seal_parts(&self.inner, generation, part_ids))
+    }
+
+    /// CAS-write `CURRENT` to `generation` (`expected` must match the live pointer).
+    ///
+    /// # Errors
+    ///
+    /// [`CatalogError`] when the conditional put is rejected (last good generation kept).
+    #[pyo3(signature = (generation, *, expected))]
+    fn cas_publish(&self, py: Python<'_>, generation: u64, expected: Option<u64>) -> PyResult<()> {
+        py.detach(|| {
+            self.inner
+                .publish_generation(generation, expected)
+                .map_err(|err| catalog_err(&err))
+        })
+    }
+
+    /// Pin `current` or `g/<id>` and open that generation's `packed.tet`.
+    ///
+    /// Same pin rule as 0.3.0: advancing `CURRENT` later does not retarget this handle.
+    ///
+    /// # Errors
+    ///
+    /// [`CatalogError`] / [`PyValueError`] for a bad pin or missing objects.
+    #[pyo3(signature = (pin="current"))]
+    fn open(&self, py: Python<'_>, pin: &str) -> PyResult<PyTetFile> {
+        let generation = parse_store_pin(pin)?;
+        py.detach(|| open_store_pin(&self.inner, generation))
     }
 }
 
@@ -467,6 +695,7 @@ fn _native(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(package_publish, m)?)?;
     m.add_class::<PyTetFile>()?;
     m.add_class::<PyMemoryStore>()?;
+    m.add_class::<PyS3Store>()?;
     m.add_class::<writer::PyTetWriterSession>()?;
     m.add_class::<writer::WriteDatasetOptions>()?;
     Ok(())

@@ -55,7 +55,7 @@ Compared with Rust `tet convert`: Python does not apply CF scale/offset, chunks 
 
 ## Packages
 
-`tet.open("pkg.tet.d")` reads the generation named by `CURRENT` (`packed.tet`). `tet.ingest` copies a sealed `.tet` into staging, and `tet.publish` seals those parts and updates `CURRENT`. See [`docs/operations.md`](docs/operations.md#packages).
+`tet.open("pkg.tet.d")` reads the generation named by `CURRENT` (`packed.tet`). `tet.ingest` copies a sealed `.tet` into staging, and `tet.publish` seals those parts and updates `CURRENT`. For an S3-compatible backend, use `S3Store.connect(...)` then `ingest` / `publish` / `open` (endpoint and credentials are arguments; a pinned open does not follow a later publish). See [`docs/operations.md`](docs/operations.md#packages).
 
 ## Documentation
 

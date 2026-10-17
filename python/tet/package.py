@@ -1,8 +1,8 @@
-"""Local ``.tet.d`` packages: open ``CURRENT``, ingest a sealed ``.tet``, publish.
+"""Local ``.tet.d`` packages and store-backed ingest / publish.
 
-These wrap ``tetration`` ``ingest_tet_file`` / ``publish_parts``. They do not start
-concurrent shard writers. :class:`MemoryStore` copies a published generation into
-an in-memory store for URI pin tests (THI-504; no S3).
+Local helpers wrap ``tetration`` ``ingest_tet_file`` / ``publish_parts``. They do not
+start concurrent shard writers. :class:`MemoryStore` and :class:`S3Store` speak the
+same store ingest / publish path (``stage_part`` / ``publish_staged_parts``).
 """
 
 from __future__ import annotations
@@ -20,20 +20,118 @@ _PROTOCOL_FILE = "PROTOCOL"
 _DEFAULT_SESSION_ID = "s0"
 
 
-class MemoryStore:
-    """In-memory package store seeded from a local ``.tet.d`` (no credentials)."""
+def _resolve_part_id(source: Path, part_id: str | None) -> str:
+    if part_id is not None:
+        return part_id
+    return str(_native.part_id_from_path(source))
 
-    def __init__(self, inner: _native.MemoryStore) -> None:
-        self._inner = inner
+
+class MemoryStore:
+    """In-memory package store (pin tests + store ingest without credentials)."""
+
+    def __init__(self, inner: _native.MemoryStore | None = None) -> None:
+        self._inner = inner if inner is not None else _native.MemoryStore()
 
     @classmethod
     def from_package(cls, path: str | PathLike[str]) -> MemoryStore:
         """Copy ``CURRENT`` / ``packed.tet`` from ``path`` into a new memory store."""
         return cls(_native.MemoryStore.from_package(Path(path).expanduser()))
 
+    def ingest(
+        self,
+        source: str | PathLike[str],
+        *,
+        part_id: str | None = None,
+        session_id: str = _DEFAULT_SESSION_ID,
+    ) -> str:
+        """Stage ``source`` (a sealed ``.tet``) as one part. Returns the part id."""
+        src = Path(source).expanduser()
+        chosen = _resolve_part_id(src, part_id)
+        return str(self._inner.ingest(src, session_id=session_id, part_id=chosen))
+
+    def publish(
+        self,
+        part_ids: Sequence[str],
+        *,
+        generation: int | None = None,
+    ) -> int:
+        """Seal ``part_ids`` and CAS-publish ``CURRENT``. Returns the generation id."""
+        return int(self._inner.publish(list(part_ids), generation=generation))
+
+    def seal(self, part_ids: Sequence[str], *, generation: int) -> int:
+        """Seal ``part_ids`` into ``generation`` without flipping ``CURRENT``."""
+        return int(self._inner.seal(list(part_ids), generation))
+
+    def cas_publish(self, generation: int, *, expected: int | None) -> None:
+        """CAS-write ``CURRENT``; raises when ``expected`` does not match."""
+        self._inner.cas_publish(generation, expected=expected)
+
     def open(self, uri: str = "memory://current") -> TetFile:
         """Pin ``uri`` (``memory://current`` or ``memory://g/<id>``) and open it."""
         return TetFile.from_native(self._inner.open(uri))
+
+
+class S3Store:
+    """S3-compatible package store. Endpoint and credentials are constructor args."""
+
+    def __init__(self, inner: _native.S3Store) -> None:
+        self._inner = inner
+
+    @classmethod
+    def connect(
+        cls,
+        *,
+        endpoint: str,
+        bucket: str,
+        access_key_id: str,
+        secret_access_key: str,
+        prefix: str = "",
+        region: str = "us-east-1",
+    ) -> S3Store:
+        """Open a bucket (path-style). Does not create the bucket."""
+        return cls(
+            _native.S3Store.connect(
+                endpoint=endpoint,
+                bucket=bucket,
+                access_key_id=access_key_id,
+                secret_access_key=secret_access_key,
+                prefix=prefix,
+                region=region,
+            )
+        )
+
+    def ingest(
+        self,
+        source: str | PathLike[str],
+        *,
+        part_id: str | None = None,
+        session_id: str = _DEFAULT_SESSION_ID,
+    ) -> str:
+        """Stage ``source`` (a sealed ``.tet``) as one part. Returns the part id."""
+        src = Path(source).expanduser()
+        chosen = _resolve_part_id(src, part_id)
+        return str(self._inner.ingest(src, session_id=session_id, part_id=chosen))
+
+    def publish(
+        self,
+        part_ids: Sequence[str],
+        *,
+        generation: int | None = None,
+    ) -> int:
+        """Seal ``part_ids`` and CAS-publish ``CURRENT``. Returns the generation id."""
+        return int(self._inner.publish(list(part_ids), generation=generation))
+
+    def seal(self, part_ids: Sequence[str], *, generation: int) -> int:
+        """Seal ``part_ids`` into ``generation`` without flipping ``CURRENT``."""
+        return int(self._inner.seal(list(part_ids), generation))
+
+    def cas_publish(self, generation: int, *, expected: int | None) -> None:
+        """CAS-write ``CURRENT``; a lost put leaves the last good generation."""
+        self._inner.cas_publish(generation, expected=expected)
+
+    def open(self, pin: str = "current") -> TetFile:
+        """Pin ``current`` or ``g/<id>`` once and open that generation's ``packed.tet``."""
+        return TetFile.from_native(self._inner.open(pin))
 
 
 def is_package(path: str | PathLike[str]) -> bool:
@@ -78,7 +176,7 @@ def ingest(
     src = Path(source).expanduser()
     if create and not (root / _PROTOCOL_FILE).is_file():
         _native.package_create(root)
-    chosen = part_id if part_id is not None else _native.part_id_from_path(src)
+    chosen = _resolve_part_id(src, part_id)
     return str(_native.package_ingest(root, src, session_id, chosen))
 
 
