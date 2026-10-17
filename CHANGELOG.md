@@ -2,6 +2,17 @@
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-10-17
+
+### Added
+
+- Store URI open + generation pin: `tet.open` accepts `file://` / `?generation=N`; package opens pin `CURRENT` once (`TetFile.generation`) ([THI-504](https://linear.app/thicclatka/issue/THI-504))
+- `MemoryStore.from_package` + `memory://` open for in-memory pin tests (no S3)
+
+### Changed
+
+- Pin tetration **0.3.0** from crates.io and align package version (**0.3.0**)
+
 ## [0.2.3] - 2026-10-16
 
 ### Added
