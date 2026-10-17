@@ -607,6 +607,41 @@ impl PyS3Store {
     }
 }
 
+/// Download one object for `tet.convert` (`s3://` single-file sources).
+///
+/// Credentials come from `TETRATION_S3_*` via [`S3Config::from_env`]. The bucket is the
+/// one in the URI; the prefix is empty so `key` is the full object key.
+///
+/// # Errors
+///
+/// [`CatalogError`] when the endpoint is unset, the client fails, or the object is missing.
+#[pyfunction]
+#[allow(clippy::needless_pass_by_value)]
+fn download_s3_object(py: Python<'_>, bucket: String, key: String) -> PyResult<Vec<u8>> {
+    py.detach(|| {
+        let config = S3Config::from_env(bucket, String::new()).map_err(|err| catalog_err(&err))?;
+        let store = S3Store::connect(config).map_err(|err| catalog_err(&err))?;
+        store.read_all(&key).map_err(|err| catalog_err(&err))
+    })
+}
+
+/// Upload one object so convert tests can stage a fixture. Not a package ingest.
+///
+/// # Errors
+///
+/// [`CatalogError`] when the endpoint is unset or the put fails.
+#[pyfunction]
+#[allow(clippy::needless_pass_by_value)]
+fn upload_s3_object(py: Python<'_>, bucket: String, key: String, bytes: Vec<u8>) -> PyResult<()> {
+    py.detach(|| {
+        let config = S3Config::from_env(bucket, String::new()).map_err(|err| catalog_err(&err))?;
+        let store = S3Store::connect(config).map_err(|err| catalog_err(&err))?;
+        store
+            .write_part(&key, &bytes)
+            .map_err(|err| catalog_err(&err))
+    })
+}
+
 /// Create an empty `.tet.d` package directory.
 ///
 /// # Errors
@@ -676,6 +711,8 @@ fn _native(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(open, m)?)?;
     m.add_function(wrap_pyfunction!(open_package, m)?)?;
     m.add_function(wrap_pyfunction!(open_uri, m)?)?;
+    m.add_function(wrap_pyfunction!(download_s3_object, m)?)?;
+    m.add_function(wrap_pyfunction!(upload_s3_object, m)?)?;
     m.add_function(wrap_pyfunction!(package_create, m)?)?;
     m.add_function(wrap_pyfunction!(part_id_from_path, m)?)?;
     m.add_function(wrap_pyfunction!(package_ingest, m)?)?;

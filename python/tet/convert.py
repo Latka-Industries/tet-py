@@ -18,14 +18,16 @@ import csv
 import importlib
 import json
 import math
+import tempfile
 from collections.abc import Mapping
 from dataclasses import dataclass
-from os import PathLike
+from os import PathLike, fspath
 from pathlib import Path
 from typing import Any
 
 import numpy as np
 
+import tet._native as _native
 from tet._io.writer import TetWriter
 
 # Match tetration `MetadataLimitsV1::DEFAULT.attr_string_bytes` (footer attr cap).
@@ -65,6 +67,12 @@ _FORMAT_BY_SUFFIX: dict[str, str] = {
 }
 
 _SUPPORTED_FORMATS = "npy, npz, h5, netcdf, zarr, csv, tsv, parquet"
+# Single-file suffixes `s3://` convert will download. Zarr stores are a later cut.
+_S3_SINGLE_FILE_SUFFIXES = frozenset(set(_FORMAT_BY_SUFFIX) - {".zarr"}) | {".npy", ".npz"}
+_S3_ZARR = (
+    "s3:// convert does not read Zarr stores; pass a single file "
+    "(.npy, .npz, .h5, .nc, .csv, .tsv, .parquet). Chunked Zarr-on-S3 reads are later"
+)
 
 # NumPy dtype name → layout-v1 wire dtype. ``bool`` and ``int8`` follow the HDF5
 # importer and land as ``uint8``.
@@ -103,8 +111,10 @@ def convert(
 
     Parameters
     ----------
-    src : path-like
-        Source file, or a Zarr directory store.
+    src : path-like or ``s3://`` URI
+        Source file, a Zarr directory store, or ``s3://bucket/object.ext``.
+        An ``s3://`` object is downloaded in full (``TETRATION_S3_ENDPOINT`` required),
+        then passed to the same importer as a local file. Zarr prefixes are rejected.
     dst : path-like
         Destination ``.tet`` path.
     dataset : str, default ``"data"``
@@ -125,14 +135,21 @@ def convert(
     Raises
     ------
     FileNotFoundError
-        If ``src`` does not exist.
+        If a local ``src`` does not exist.
     ImportError
         If an optional extra is required but not installed.
     ValueError
-        If the format cannot be inferred, is unsupported, or no layout-v1 arrays remain.
+        If the format cannot be inferred, is unsupported, the ``s3://`` URI is not a
+        single file, or no layout-v1 arrays remain.
+    CatalogError
+        If an ``s3://`` download fails or ``TETRATION_S3_ENDPOINT`` is unset.
     """
-    src_path = Path(src).expanduser()
+    src_text = fspath(src).strip()
     dst_path = Path(dst).expanduser()
+    if src_text.startswith("s3://"):
+        return _convert_s3(src_text, dst_path, dataset=dataset, format=format, **write_kw)
+
+    src_path = Path(src_text).expanduser()
     kind = (format or _infer_format(src_path)).lower()
     if kind == "hdf5":
         kind = "h5"
@@ -163,6 +180,47 @@ def convert(
     if not imports:
         raise ValueError(f"no supported arrays in {src_path}")
     return _commit(dst_path, imports, history, **write_kw)
+
+
+def _convert_s3(
+    uri: str,
+    dst: Path,
+    *,
+    dataset: str,
+    format: str | None,
+    **write_kw: Any,
+) -> Path:
+    if format is not None and format.lower() == "zarr":
+        raise ValueError(f"{_S3_ZARR} ({uri})")
+    _bucket, key, file_name = _parse_s3_convert_object(uri)
+    payload = _native.download_s3_object(_bucket, key)
+    with tempfile.TemporaryDirectory(prefix="tet-convert-s3-") as scratch:
+        staged = Path(scratch) / file_name
+        staged.write_bytes(payload)
+        return convert(staged, dst, dataset=dataset, format=format, **write_kw)
+
+
+def _parse_s3_convert_object(uri: str) -> tuple[str, str, str]:
+    """Return ``(bucket, key, file_name)`` for a single-file ``s3://`` convert source."""
+    rest = uri[len("s3://") :]
+    path = rest.split("?", 1)[0]
+    bucket, sep, key = path.partition("/")
+    if not sep or not bucket or not key:
+        raise ValueError(f"invalid s3 URI (need s3://bucket/key): {uri}")
+    if key.endswith("/"):
+        raise ValueError(f"{_S3_ZARR} ({uri})")
+    file_name = key.rsplit("/", 1)[-1]
+    if file_name in ("", ".", ".."):
+        raise ValueError(f"s3 object key has no file name: {key}")
+    suffix = Path(file_name).suffix.lower()
+    if suffix == ".zarr":
+        raise ValueError(f"{_S3_ZARR} ({uri})")
+    if suffix not in _S3_SINGLE_FILE_SUFFIXES:
+        raise ValueError(
+            f"unsupported s3 convert object {file_name!r} "
+            f"(single-file extensions only; Zarr-on-S3 is later)"
+        )
+    return bucket, key, file_name
 
 
 def _infer_format(path: Path) -> str:

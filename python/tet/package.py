@@ -144,7 +144,8 @@ class S3Store:
 
     Endpoint and credentials are arguments to :meth:`connect` — they are not embedded
     in ``s3://`` URIs. Use this class for ingest / publish / pin; ``tet.open("s3://…")``
-    is not supported (convert-from-``s3://`` is a later cut).
+    is not supported. ``tet.convert("s3://bucket/object.ext", …)`` downloads one foreign
+    object (not a package) and runs the local importer.
     """
 
     def __init__(self, inner: _native.S3Store) -> None:

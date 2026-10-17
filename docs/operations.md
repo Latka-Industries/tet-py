@@ -517,7 +517,7 @@ build_query("a", selection=sel, min=[1])
 | `SidecarTransformResult.to_numpy(f)`                             | Open sidecar `.tet` → `ndarray`                 |
 | `tet.write_dataset(path, name, array)`                           | Create one-dataset `.tet` from NumPy            |
 | `tet.TetWriter.create(path)`                                     | Buffered multi-dataset writer                   |
-| `tet.convert(src, dst.tet)`                                      | `.npy`/`.npz`/`.csv`/`.tsv` in-core; h5/netcdf/zarr/parquet extras |
+| `tet.convert(src, dst.tet)`                                      | local path or `s3://bucket/file` (full download); `.npy`/`.npz`/`.csv`/`.tsv` in-core; h5/netcdf/zarr/parquet extras |
 | `tet.export(src.tet, dst)` / `f.export(dst)`                     | `.tet` → h5/netcdf/zarr via extras (`[export]` or per-format) |
 
 `doc` may be a **`dict`**, **JSON string**, or **TOML string**.
@@ -586,7 +586,7 @@ with tet.open("demo.tet.d") as f:
 
 ### S3-compatible store
 
-`S3Store.connect` takes endpoint and credentials as arguments (not embedded in a URI). Parallel writers each call `ingest` with a unique `session_id`; one `publish` seals the generation and CAS-flips `CURRENT`. `open("current")` or `open("g/<id>")` pins once — a later publish does not retarget that handle. `tet.open("s3://…")` is not supported here.
+`S3Store.connect` takes endpoint and credentials as arguments (not embedded in a URI). Parallel writers each call `ingest` with a unique `session_id`; one `publish` seals the generation and CAS-flips `CURRENT`. `open("current")` or `open("g/<id>")` pins once — a later publish does not retarget that handle. `tet.open("s3://…")` is not supported here. `tet.convert("s3://bucket/object.ext", dst)` is a separate path: it downloads that one foreign object (env `TETRATION_S3_ENDPOINT`) and runs the local importer. It does not open a package, and it does not read a Zarr store on S3.
 
 ```python
 from tet import S3Store, write_dataset
