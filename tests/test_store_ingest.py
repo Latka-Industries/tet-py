@@ -90,3 +90,23 @@ def test_minio_parallel_ingest_publish_and_lost_cas(tmp_path: Path) -> None:
     if store is None:
         pytest.skip("set TETRATION_S3_ENDPOINT to run MinIO store tests")
     _parallel_ingest_publish_pin(store, tmp_path)
+
+
+def test_open_s3_package_range_reads_match_local(tmp_path: Path) -> None:
+    prefix = f"tests/tet-py-open-{time.time_ns()}"
+    store = _minio_store(prefix)
+    if store is None:
+        pytest.skip("set TETRATION_S3_ENDPOINT to run MinIO store tests")
+    src = _write_part(tmp_path / "a.tet", "a", [1.0, 2.0, 3.0, 4.0])
+    store.ingest(src, session_id="s", part_id="a")
+    store.publish(["a"])
+    bucket = os.environ.get("TETRATION_S3_BUCKET", "tetration-test")
+    uri = f"s3://{bucket}/{prefix}"
+    with tet.open(src) as local, tet.open(uri) as remote:
+        assert remote.generation == 1
+        assert remote.sum("a") == pytest.approx(local.sum("a"))
+        np.testing.assert_allclose(remote.read_numpy("a"), local.read_numpy("a"))
+        assert "a" in remote.datasets()
+    with tet.open(f"{uri}?generation=1") as pinned:
+        assert pinned.generation == 1
+        assert pinned.sum("a") == pytest.approx(10.0)

@@ -69,9 +69,10 @@ store = S3Store.connect(endpoint="http://127.0.0.1:9000", bucket="…",
 store.ingest("part.tet", session_id="s0")
 store.publish(["part"])
 f = store.open("current")  # pin; later publish does not retarget f
+# or, with TETRATION_S3_* set: tet.open("s3://bucket/demo")
 ```
 
-Endpoint and credentials are arguments (not in the URI). See [`docs/operations.md`](docs/operations.md#packages).
+Endpoint and credentials are arguments or `TETRATION_S3_*` (not in the URI). `tet.open("s3://bucket/prefix")` range-reads the pinned package. `S3Store.open` still downloads `packed.tet`. See [`docs/operations.md`](docs/operations.md#packages).
 
 ## Documentation
 
