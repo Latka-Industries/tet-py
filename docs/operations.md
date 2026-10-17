@@ -518,6 +518,7 @@ build_query("a", selection=sel, min=[1])
 | `tet.write_dataset(path, name, array)`                           | Create one-dataset `.tet` from NumPy            |
 | `tet.TetWriter.create(path)`                                     | Buffered multi-dataset writer                   |
 | `tet.convert(src, dst.tet)`                                      | `.npy`/`.npz`/`.csv`/`.tsv` in-core; h5/netcdf/zarr/parquet extras |
+| `tet.export(src.tet, dst)` / `f.export(dst)`                     | `.tet` → h5/netcdf/zarr via extras (`[export]` or per-format) |
 
 `doc` may be a **`dict`**, **JSON string**, or **TOML string**.
 

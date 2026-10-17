@@ -18,6 +18,7 @@ from tet._core.errors import UnknownAxisError, UnknownDatasetError
 from tet.file import TetFile
 from tet._io import SpillReadResult, TetWriter, write_dataset
 from tet.convert import convert
+from tet.export import export
 from tet.package import create, ingest, is_package, publish
 from tet._native import CatalogError, TetError, core_version
 from tet._query import (
@@ -107,6 +108,7 @@ __all__ = [
     "axis_slice",
     "build_query",
     "convert",
+    "export",
     "create",
     "ingest",
     "is_package",

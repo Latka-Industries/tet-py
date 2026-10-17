@@ -49,6 +49,10 @@ More examples: [Python quick start](https://docs.tetration.sh/python/quick-start
 
 Compared with Rust `tet convert`: Python does not apply CF scale/offset, chunks the whole array unless you pass `chunk_shape`, and can read codecs the Rust importer skips when the extra library can decode them. Columns that are not layout-v1 numeric (or category text) are omitted.
 
+## Export
+
+`tet.export` (and `TetFile.export`) writes a `.tet` to HDF5, NetCDF, or Zarr. Same optional extras as convert (`[h5]`, `[netcdf]`, `[zarr]`, or `[export]` for those three). Dense numeric datasets only; carries `dim_names` and basic string attrs when present. Values are densified via `read_numpy` — prefer Rust `tet export` when you need native HDF5/NetCDF or chunk-preserving Zarr.
+
 ## Packages
 
 `tet.open("pkg.tet.d")` reads the generation named by `CURRENT` (`packed.tet`). `tet.ingest` copies a sealed `.tet` into staging, and `tet.publish` seals those parts and updates `CURRENT`. See [`docs/operations.md`](docs/operations.md#packages).

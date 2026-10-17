@@ -2,6 +2,14 @@
 
 ## [Unreleased]
 
+### Added
+
+- `tet.export` / `TetFile.export`: write HDF5, NetCDF, or Zarr via optional extras (`tet-py[h5]`, `[netcdf]`, `[zarr]`, or `[export]`) ([THI-494](https://linear.app/thicclatka/issue/THI-494))
+
+### Changed
+
+- Pin tetration **0.2.3** from crates.io (HDF5 / NetCDF / Zarr export in the CLI)
+
 ## [0.2.2] - 2026-10-16
 
 ### Added
