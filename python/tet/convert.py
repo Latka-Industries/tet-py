@@ -11,6 +11,8 @@ Rust ``tet convert`` is still the fast path. Intentional Python differences:
 * library codecs the Rust importer skips (HDF5 filters, Zarr blosc) are read when the extra can decode them
 * unsupported columns are omitted; the call fails only when nothing remains
 * an ``s3://bucket/object.ext`` source is downloaded in full, then imported like a local file
+* an ``s3://`` Zarr v2 or v3 prefix is opened through the zarr library; each chunk object is
+  fetched as the array is read (not a full prefix download first)
 """
 
 from __future__ import annotations
@@ -20,7 +22,7 @@ import importlib
 import json
 import math
 import tempfile
-from collections.abc import Mapping
+from collections.abc import Iterator, Mapping, MutableMapping
 from dataclasses import dataclass
 from os import PathLike, fspath
 from pathlib import Path
@@ -68,12 +70,8 @@ _FORMAT_BY_SUFFIX: dict[str, str] = {
 }
 
 _SUPPORTED_FORMATS = "npy, npz, h5, netcdf, zarr, csv, tsv, parquet"
-# Single-file suffixes `s3://` convert will download. Zarr stores are a later cut.
+# Single-file suffixes `s3://` convert will download whole. Zarr prefixes are separate.
 _S3_SINGLE_FILE_SUFFIXES = frozenset(set(_FORMAT_BY_SUFFIX) - {".zarr"}) | {".npy", ".npz"}
-_S3_ZARR = (
-    "s3:// convert does not read Zarr stores; pass a single file "
-    "(.npy, .npz, .h5, .nc, .csv, .tsv, .parquet). Chunked Zarr-on-S3 reads are later"
-)
 
 # NumPy dtype name → layout-v1 wire dtype. ``bool`` and ``int8`` follow the HDF5
 # importer and land as ``uint8``.
@@ -113,9 +111,11 @@ def convert(
     Parameters
     ----------
     src : path-like or ``s3://`` URI
-        Source file, a Zarr directory store, or ``s3://bucket/object.ext``.
-        An ``s3://`` object is downloaded in full (``TETRATION_S3_ENDPOINT`` required),
-        then passed to the same importer as a local file. Zarr prefixes are rejected.
+        Source file, a Zarr directory store, ``s3://bucket/object.ext``, or an
+        ``s3://`` Zarr prefix. A single ``s3://`` object is downloaded in full
+        (``TETRATION_S3_ENDPOINT`` required), then passed to the same importer as a
+        local file. A Zarr prefix is read through the zarr library; each chunk is
+        fetched as needed.
     dst : path-like
         Destination ``.tet`` path.
     dataset : str, default ``"data"``
@@ -141,7 +141,7 @@ def convert(
         If an optional extra is required but not installed.
     ValueError
         If the format cannot be inferred, is unsupported, the ``s3://`` URI is not a
-        single file, or no layout-v1 arrays remain.
+        single file or Zarr store, or no layout-v1 arrays remain.
     CatalogError
         If an ``s3://`` download fails or ``TETRATION_S3_ENDPOINT`` is unset.
     """
@@ -191,37 +191,188 @@ def _convert_s3(
     format: str | None,
     **write_kw: Any,
 ) -> Path:
-    if format is not None and format.lower() == "zarr":
-        raise ValueError(f"{_S3_ZARR} ({uri})")
-    _bucket, key, file_name = _parse_s3_convert_object(uri)
-    payload = _native.download_s3_object(_bucket, key)
+    bucket, key = _s3_bucket_key(uri)
+    force_zarr = format is not None and format.lower() == "zarr"
+    if force_zarr or _zarr_convert_candidate(key):
+        return _convert_s3_zarr(bucket, key, uri, dst, **write_kw)
+    if format is not None and format.lower() not in (
+        "npy",
+        "npz",
+        "h5",
+        "hdf5",
+        "netcdf",
+        "csv",
+        "tsv",
+        "parquet",
+    ):
+        raise ValueError(f"unsupported convert format {format!r} for {uri}")
+    _bucket, object_key, file_name = _parse_s3_convert_object(uri)
+    payload = _native.download_s3_object(_bucket, object_key)
     with tempfile.TemporaryDirectory(prefix="tet-convert-s3-") as scratch:
         staged = Path(scratch) / file_name
         staged.write_bytes(payload)
         return convert(staged, dst, dataset=dataset, format=format, **write_kw)
 
 
-def _parse_s3_convert_object(uri: str) -> tuple[str, str, str]:
-    """Return ``(bucket, key, file_name)`` for a single-file ``s3://`` convert source."""
+def _s3_bucket_key(uri: str) -> tuple[str, str]:
     rest = uri[len("s3://") :]
     path = rest.split("?", 1)[0]
     bucket, sep, key = path.partition("/")
-    if not sep or not bucket or not key:
+    if not sep or not bucket or not key.strip("/"):
         raise ValueError(f"invalid s3 URI (need s3://bucket/key): {uri}")
+    return bucket, key
+
+
+def _zarr_convert_candidate(key: str) -> bool:
+    """Trailing slash, ``*.zarr``, or a final segment with no ``.`` (store prefix)."""
     if key.endswith("/"):
-        raise ValueError(f"{_S3_ZARR} ({uri})")
+        return True
+    name = key.rsplit("/", 1)[-1]
+    if not name or name in (".", ".."):
+        return True
+    if Path(name).suffix.lower() == ".zarr":
+        return True
+    return "." not in name
+
+
+def _parse_s3_convert_object(uri: str) -> tuple[str, str, str]:
+    """Return ``(bucket, key, file_name)`` for a single-file ``s3://`` convert source."""
+    bucket, key = _s3_bucket_key(uri)
+    if _zarr_convert_candidate(key):
+        raise ValueError(
+            f"s3 URI `{uri}` is a Zarr prefix; tet.convert reads it one chunk at a time"
+        )
     file_name = key.rsplit("/", 1)[-1]
     if file_name in ("", ".", ".."):
         raise ValueError(f"s3 object key has no file name: {key}")
     suffix = Path(file_name).suffix.lower()
-    if suffix == ".zarr":
-        raise ValueError(f"{_S3_ZARR} ({uri})")
     if suffix not in _S3_SINGLE_FILE_SUFFIXES:
         raise ValueError(
             f"unsupported s3 convert object {file_name!r} "
-            f"(single-file extensions only; Zarr-on-S3 is later)"
+            "(single-file extensions: .npy, .npz, .h5, .nc, .csv, .tsv, .parquet)"
         )
     return bucket, key, file_name
+
+
+def _convert_s3_zarr(
+    bucket: str,
+    key: str,
+    uri: str,
+    dst: Path,
+    **write_kw: Any,
+) -> Path:
+    _require("zarr", Path(uri))
+    prefix = key.strip("/")
+    if not _s3_prefix_is_zarr(bucket, prefix):
+        raise ValueError(
+            f"{uri} is not a Zarr v2 or v3 store "
+            "(no zarr.json, .zgroup, or .zarray at the prefix)"
+        )
+    history = (
+        _HISTORY_ZARR
+        if _s3_object_exists(bucket, prefix, _ZARR_V3_META)
+        else _HISTORY_ZARR2
+    )
+    imports, _ = _load_zarr(_s3_zarr_memory_store(bucket, prefix), history=history)
+    if not imports:
+        raise ValueError(f"no supported arrays in {uri}")
+    return _commit(dst, imports, history, **write_kw)
+
+
+def _s3_object_exists(bucket: str, prefix: str, name: str) -> bool:
+    object_key = f"{prefix}/{name}" if prefix else name
+    try:
+        _native.download_s3_object(bucket, object_key)
+    except _native.CatalogError as err:
+        # Missing endpoint / bad credentials are not "object absent".
+        detail = str(err)
+        if "TETRATION_S3_ENDPOINT" in detail or "endpoint" in detail.lower():
+            raise
+        return False
+    return True
+
+
+def _s3_prefix_is_zarr(bucket: str, prefix: str) -> bool:
+    return any(
+        _s3_object_exists(bucket, prefix, name)
+        for name in (_ZARR_V3_META, ".zgroup", ".zarray")
+    )
+
+
+def _s3_zarr_memory_store(bucket: str, prefix: str) -> Any:
+    """zarr ``MemoryStore`` that GETs each key from S3 as the library asks for it."""
+    zarr_storage = importlib.import_module("zarr.storage")
+    buffer_mod = importlib.import_module("zarr.core.buffer.cpu")
+    return zarr_storage.MemoryStore(
+        store_dict=_S3ZarrMap(bucket, prefix, buffer_mod.Buffer),
+        read_only=True,
+    )
+
+
+class _S3ZarrMap(MutableMapping[str, Any]):
+    """Lazy relative-key map over one S3 Zarr prefix."""
+
+    def __init__(self, bucket: str, prefix: str, buffer_type: Any) -> None:
+        self._bucket = bucket
+        self._prefix = prefix.strip("/")
+        self._buffer_type = buffer_type
+        self._keys: list[str] | None = None
+        self.fetched: list[str] = []
+
+    def _full(self, key: str) -> str:
+        rel = key.lstrip("/")
+        if not self._prefix:
+            return rel
+        return f"{self._prefix}/{rel}" if rel else self._prefix
+
+    def __getitem__(self, key: str) -> Any:
+        self.fetched.append(key)
+        try:
+            raw = _native.download_s3_object(self._bucket, self._full(key))
+        except _native.CatalogError as err:
+            raise KeyError(key) from err
+        return self._buffer_type.from_bytes(raw)
+
+    def __setitem__(self, key: str, value: Any) -> None:
+        raise TypeError("s3 Zarr convert store is read-only")
+
+    def __delitem__(self, key: str) -> None:
+        raise TypeError("s3 Zarr convert store is read-only")
+
+    def __iter__(self) -> Iterator[str]:
+        return iter(self._listed_keys())
+
+    def __len__(self) -> int:
+        return len(self._listed_keys())
+
+    def __contains__(self, key: object) -> bool:
+        if not isinstance(key, str):
+            return False
+        try:
+            _native.download_s3_object(self._bucket, self._full(key))
+        except _native.CatalogError:
+            return False
+        return True
+
+    def _listed_keys(self) -> list[str]:
+        if self._keys is None:
+            self._keys = [
+                key
+                for key in _native.list_s3_prefix(self._bucket, self._prefix)
+                if _looks_like_zarr_store_key(key)
+            ]
+        return self._keys
+
+
+def _looks_like_zarr_store_key(rel: str) -> bool:
+    """Keep metadata and chunk keys; drop unrelated objects under the prefix."""
+    name = rel.rsplit("/", 1)[-1]
+    if name in (_ZARR_V3_META, ".zarray", ".zgroup", ".zattrs", ".zmetadata"):
+        return True
+    if name.isdigit() or (name and name.replace(".", "").isdigit()):
+        return True
+    parts = rel.split("/")
+    return "c" in parts
 
 
 def _infer_format(path: Path) -> str:
@@ -380,12 +531,18 @@ def _walk_nc(group: Any, prefix: str, imports: list[_Import]) -> None:
         _walk_nc(group.groups[name], _join(prefix, str(name)), imports)
 
 
-def _load_zarr(src: Path) -> tuple[list[_Import], str]:
+def _load_zarr(
+    src: Path | Any,
+    *,
+    history: str | None = None,
+) -> tuple[list[_Import], str]:
     zarr = importlib.import_module("zarr")
 
-    store = src
-    history = _HISTORY_ZARR if (store / _ZARR_V3_META).is_file() else _HISTORY_ZARR2
-    root = zarr.open_group(store, mode="r")
+    if history is None:
+        if not isinstance(src, Path):
+            raise TypeError("history is required when opening a non-path Zarr store")
+        history = _HISTORY_ZARR if (src / _ZARR_V3_META).is_file() else _HISTORY_ZARR2
+    root = zarr.open_group(src, mode="r")
     imports: list[_Import] = []
     _walk_zarr(root, "", imports)
     imports.sort(key=lambda item: item.name)

@@ -79,8 +79,9 @@ def open(path: str | PathLike[str]) -> TetFile:
         ``TETRATION_S3_*`` and range-reads on query; credentials are not in the URI.
         Use :class:`MemoryStore` for ``memory://`` and :class:`S3Store` for ingest /
         publish. ``S3Store.open`` still downloads the whole ``packed.tet``.
-        ``tet.convert("s3://bucket/object.ext")`` is a separate full download of one
-        foreign object.
+        ``tet.convert("s3://bucket/object.ext")`` downloads one foreign file;
+        ``tet.convert("s3://bucket/store.zarr")`` reads a Zarr prefix one chunk at a
+        time. Neither path opens a package.
 
     Returns
     -------

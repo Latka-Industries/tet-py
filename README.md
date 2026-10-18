@@ -39,7 +39,7 @@ More examples: [Python quick start](https://docs.tetration.sh/python/quick-start
 
 `tet.convert` writes one `.tet` from a foreign file. `.npy`, multi-member `.npz`, and `.csv` / `.tsv` are in the core wheel. Other formats are optional extras: `tet-py[h5]`, `[netcdf]`, `[zarr]`, `[parquet]`, or `[convert]` for all of them.
 
-`src` may be `s3://bucket/object.ext`. That downloads the whole object (`TETRATION_S3_ENDPOINT`, plus the usual access key / secret / region), writes a temp file, and uses the same importer. Zarr prefixes are not read from S3.
+`src` may be `s3://bucket/object.ext` (full download, then the same importer) or an `s3://` Zarr v2/v3 prefix (each chunk is fetched as the zarr library reads it). Credentials stay in `TETRATION_S3_*`.
 
 | Extra | What it imports |
 | --- | --- |
