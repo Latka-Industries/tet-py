@@ -517,7 +517,7 @@ build_query("a", selection=sel, min=[1])
 | `SidecarTransformResult.to_numpy(f)`                             | Open sidecar `.tet` → `ndarray`                 |
 | `tet.write_dataset(path, name, array)`                           | Create one-dataset `.tet` from NumPy            |
 | `tet.TetWriter.create(path)`                                     | Buffered multi-dataset writer                   |
-| `tet.convert(src, dst.tet)`                                      | local path or `s3://bucket/file` (full download); `.npy`/`.npz`/`.csv`/`.tsv` in-core; h5/netcdf/zarr/parquet extras |
+| `tet.convert(src, dst.tet)`                                      | local path, `s3://bucket/file` (full download), or `s3://` Zarr prefix (chunk GETs); `.npy`/`.npz`/`.csv`/`.tsv` in-core; h5/netcdf/zarr/parquet extras |
 | `tet.export(src.tet, dst)` / `f.export(dst)`                     | `.tet` → h5/netcdf/zarr via extras (`[export]` or per-format) |
 
 `doc` may be a **`dict`**, **JSON string**, or **TOML string**.
@@ -586,7 +586,7 @@ with tet.open("demo.tet.d") as f:
 
 ### S3-compatible store
 
-`S3Store.connect` takes endpoint and credentials as arguments (not embedded in a URI). Parallel writers each call `ingest` with a unique `session_id`; one `publish` seals the generation and CAS-flips `CURRENT`. `open("current")` or `open("g/<id>")` pins once — a later publish does not retarget that handle. `tet.open("s3://bucket/prefix")` (optional `?generation=N`) pins the same way from `TETRATION_S3_*` and range-reads on query; it does not download the whole object. `S3Store.open` still materializes `packed.tet`. `tet.convert("s3://bucket/object.ext", dst)` is a separate path: it downloads that one foreign object and runs the local importer. It does not open a package, and it does not read a Zarr store on S3.
+`S3Store.connect` takes endpoint and credentials as arguments (not embedded in a URI). Parallel writers each call `ingest` with a unique `session_id`; one `publish` seals the generation and CAS-flips `CURRENT`. `open("current")` or `open("g/<id>")` pins once — a later publish does not retarget that handle. `tet.open("s3://bucket/prefix")` (optional `?generation=N`) pins the same way from `TETRATION_S3_*` and range-reads on query; it does not download the whole object. `S3Store.open` still materializes `packed.tet`. `tet.convert("s3://bucket/object.ext", dst)` downloads that one foreign object and runs the local importer. `tet.convert("s3://bucket/store.zarr", dst)` opens the Zarr through the zarr library and GETs each chunk as needed. Neither path opens a tet package.
 
 ```python
 from tet import S3Store, write_dataset

@@ -146,8 +146,8 @@ class S3Store:
     in ``s3://`` URIs. Use this class for ingest / publish / pin.
     ``tet.open("s3://bucket/prefix")`` pins the same package from ``TETRATION_S3_*``
     and range-reads on query. :meth:`open` still downloads the whole ``packed.tet``.
-    ``tet.convert("s3://bucket/object.ext", …)`` downloads one foreign object (not a
-    package) and runs the local importer.
+    ``tet.convert("s3://bucket/object.ext", …)`` downloads one foreign object.
+    ``tet.convert`` of a Zarr prefix fetches chunks on demand. Neither is a package open.
     """
 
     def __init__(self, inner: _native.S3Store) -> None:

@@ -760,6 +760,40 @@ fn upload_s3_object(py: Python<'_>, bucket: String, key: String, body: Vec<u8>) 
     })
 }
 
+/// List object keys under `prefix` (inclusive). Keys are relative to `prefix`.
+///
+/// Used by `tet.convert` for an `s3://` Zarr store so the zarr library can walk
+/// the hierarchy without downloading chunk bodies first.
+///
+/// # Errors
+///
+/// [`CatalogError`] when the endpoint is unset or the list fails.
+#[pyfunction]
+#[allow(clippy::needless_pass_by_value)]
+fn list_s3_prefix(py: Python<'_>, bucket: String, prefix: String) -> PyResult<Vec<String>> {
+    py.detach(|| {
+        let store = connect_s3_from_env(bucket)?;
+        let trimmed = prefix.trim_matches('/').to_string();
+        let keys = store
+            .list_prefix(&trimmed)
+            .map_err(|err| catalog_err(&err))?;
+        if trimmed.is_empty() {
+            return Ok(keys);
+        }
+        let head = format!("{trimmed}/");
+        Ok(keys
+            .into_iter()
+            .filter_map(|key| {
+                if key == trimmed {
+                    None
+                } else {
+                    key.strip_prefix(&head).map(str::to_owned)
+                }
+            })
+            .collect())
+    })
+}
+
 /// Create an empty `.tet.d` package directory.
 ///
 /// # Errors
@@ -831,6 +865,7 @@ fn _native(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(open_uri, m)?)?;
     m.add_function(wrap_pyfunction!(download_s3_object, m)?)?;
     m.add_function(wrap_pyfunction!(upload_s3_object, m)?)?;
+    m.add_function(wrap_pyfunction!(list_s3_prefix, m)?)?;
     m.add_function(wrap_pyfunction!(package_create, m)?)?;
     m.add_function(wrap_pyfunction!(part_id_from_path, m)?)?;
     m.add_function(wrap_pyfunction!(package_ingest, m)?)?;

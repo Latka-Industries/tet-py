@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Added
+
+- `tet.convert` reads a Zarr v2 or v3 prefix on `s3://` through the zarr library, fetching each chunk as needed. The `.tet` matches a local-directory convert of the same store ([THI-516](https://linear.app/thicclatka/issue/THI-516))
+
 ## [0.3.4] - 2026-10-17
 
 ### Added
