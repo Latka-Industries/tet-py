@@ -582,7 +582,7 @@ with tet.open("demo.tet.d") as f:
     f.read_numpy("values")
 ```
 
-`ingest` copies one sealed `.tet` into `staging/<session>/` and writes `PART_META`. `publish` merges the named parts, seals `generations/<G>/packed.tet`, and updates `CURRENT`. Pass `generation=` to choose `G`; the default is one past the current pointer. This does not expose concurrent shard writers.
+`ingest` copies one sealed `.tet` into `staging/<session>/` and writes `PART_META`. `publish` merges the named parts, seals `generations/<G>/packed.tet`, and updates `CURRENT`. Pass `generation=` to choose `G`; the default is one past the current pointer. `dry_run=True` runs claim / schema checks without sealing. Differing-byte claim overlaps and dtype/shape changes vs sealed `CURRENT` raise `CatalogError`; pass `replace=["dataset"]` to allow a schema change in G+1. Identical-byte overlaps are allowed. This does not expose concurrent shard writers.
 
 `tet.pack("demo.tet.d", "demo.tet")` copies the sealed `CURRENT` image to a standalone `.tet`. Pass `remove_package=True` to delete the package only after size/hash/layout verify (close pinned readers first).
 

@@ -2,6 +2,14 @@
 
 ## [Unreleased]
 
+### Added
+
+- `tet.publish(..., dry_run=False, replace=None)`: claim/schema dry-run and opt-in dataset replace vs `CURRENT` ([THI-525](https://linear.app/thicclatka/issue/THI-525))
+
+### Changed
+
+- Pin tetration **0.3.7** from crates.io (clearer overlap / schema conflict errors) ([THI-525](https://linear.app/thicclatka/issue/THI-525))
+
 ## [0.3.6] - 2026-10-18
 
 ### Added
