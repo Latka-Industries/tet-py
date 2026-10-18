@@ -2,13 +2,15 @@
 
 ## [Unreleased]
 
+## [0.3.6] - 2026-10-18
+
 ### Added
 
 - `tet.pack(package, dest, *, generation=None, remove_package=False)` copies a sealed generation to a standalone `.tet` (optional package delete after verify) ([THI-523](https://linear.app/thicclatka/issue/THI-523))
 
 ### Changed
 
-- Pin tetration **0.3.6** from crates.io ([THI-523](https://linear.app/thicclatka/issue/THI-523))
+- Pin tetration **0.3.6** from crates.io and align the package version (**0.3.6**) ([THI-523](https://linear.app/thicclatka/issue/THI-523))
 
 ## [0.3.5] - 2026-10-18
 
