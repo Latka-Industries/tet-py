@@ -57,7 +57,7 @@ Compared with Rust `tet convert`: Python does not apply CF scale/offset, chunks 
 
 ## Packages
 
-`tet.open("pkg.tet.d")` reads the generation named by `CURRENT` (`packed.tet`). `tet.ingest` copies a sealed `.tet` into staging, and `tet.publish` seals those parts and updates `CURRENT`.
+`tet.open("pkg.tet.d")` reads the generation named by `CURRENT` (`packed.tet`). `tet.ingest` copies a sealed `.tet` into staging, and `tet.publish` seals those parts and updates `CURRENT`. `tet.pack(package, "out.tet")` copies that sealed image to a standalone file; pass `remove_package=True` to delete the `.tet.d` after a verified copy.
 
 For an S3-compatible backend:
 

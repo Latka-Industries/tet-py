@@ -20,7 +20,7 @@ from tet.file import TetFile
 from tet._io import SpillReadResult, TetWriter, write_dataset
 from tet.convert import convert
 from tet.export import export
-from tet.package import MemoryStore, S3Store, create, ingest, is_package, publish
+from tet.package import MemoryStore, S3Store, create, ingest, is_package, pack, publish
 from tet._native import CatalogError, TetError, core_version
 from tet._query import (
     QUERY_OP_KEYS,
@@ -127,6 +127,7 @@ __all__ = [
     "create",
     "ingest",
     "is_package",
+    "pack",
     "publish",
     "full_selection",
     "selection_slices",

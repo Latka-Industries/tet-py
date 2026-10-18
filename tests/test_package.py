@@ -31,3 +31,36 @@ def test_open_package_without_current(tmp_path: Path) -> None:
     package = tet.create(tmp_path / "empty.tet.d")
     with pytest.raises(tet.CatalogError, match="CURRENT"):
         tet.open(package)
+
+
+def test_pack_keeps_package_by_default(tmp_path: Path) -> None:
+    src = tmp_path / "values.tet"
+    arr = np.arange(6, dtype=np.float64).reshape(2, 3)
+    write_dataset(src, "values", arr)
+
+    package = tmp_path / "demo.tet.d"
+    part_id = tet.ingest(package, src, create=True)
+    generation = tet.publish(package, [part_id])
+    dest = tmp_path / "demo.tet"
+    packed = tet.pack(package, dest)
+    assert packed == generation
+    assert dest.is_file()
+    assert package.is_dir()
+    with tet.open(dest) as f:
+        np.testing.assert_array_equal(f.read_numpy("values"), arr)
+
+
+def test_pack_remove_package(tmp_path: Path) -> None:
+    src = tmp_path / "values.tet"
+    arr = np.arange(4, dtype=np.float32).reshape(2, 2)
+    write_dataset(src, "values", arr)
+
+    package = tmp_path / "rm.tet.d"
+    part_id = tet.ingest(package, src, create=True)
+    tet.publish(package, [part_id])
+    dest = tmp_path / "rm.tet"
+    tet.pack(package, dest, remove_package=True)
+    assert dest.is_file()
+    assert not package.exists()
+    with tet.open(dest) as f:
+        np.testing.assert_array_equal(f.read_numpy("values"), arr)
