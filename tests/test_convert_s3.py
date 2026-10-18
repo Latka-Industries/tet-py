@@ -21,13 +21,12 @@ def test_s3_convert_rejects_unknown_and_empty_bucket(tmp_path: Path) -> None:
         tet.convert("s3://bucket", dst)
 
 
-def test_s3_convert_parse_treats_zarr_as_prefix(tmp_path: Path) -> None:
-    """Zarr URIs are no longer rejected at parse; they need MinIO + the zarr extra."""
+def test_s3_convert_zarr_without_endpoint_reports_config(tmp_path: Path) -> None:
+    """Zarr URIs probe S3; missing ``TETRATION_S3_ENDPOINT`` must not look like a bad store."""
     dst = tmp_path / "out.tet"
-    # Without endpoint, native download fails when probing for Zarr metadata.
     if os.environ.get("TETRATION_S3_ENDPOINT", "").strip():
         pytest.skip("endpoint set; covered by minio zarr tests")
-    with pytest.raises(_native.CatalogError):
+    with pytest.raises(_native.CatalogError, match="TETRATION_S3_ENDPOINT"):
         tet.convert("s3://bucket/store.zarr", dst)
 
 

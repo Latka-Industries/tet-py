@@ -283,7 +283,11 @@ def _s3_object_exists(bucket: str, prefix: str, name: str) -> bool:
     object_key = f"{prefix}/{name}" if prefix else name
     try:
         _native.download_s3_object(bucket, object_key)
-    except _native.CatalogError:
+    except _native.CatalogError as err:
+        # Missing endpoint / bad credentials are not "object absent".
+        detail = str(err)
+        if "TETRATION_S3_ENDPOINT" in detail or "endpoint" in detail.lower():
+            raise
         return False
     return True
 
