@@ -329,14 +329,40 @@ def publish(
     part_ids: Sequence[str],
     *,
     generation: int | None = None,
+    dry_run: bool = False,
+    replace: Sequence[str] | None = None,
 ) -> int:
     """Seal ``part_ids`` into one generation and point ``CURRENT`` at it.
 
-    ``generation`` defaults to one past the current pointer (``1`` on a new package).
-    Returns the generation id that was sealed.
+    Parameters
+    ----------
+    package
+        ``.tet.d`` directory.
+    part_ids
+        Staging part ids to include in the publish set.
+    generation
+        Generation id to seal. Default: one past the current pointer (``1`` on a
+        new package).
+    dry_run
+        When true, run claim / schema checks only: no seal, no ``CURRENT`` flip.
+        Returns the generation that a real publish would use.
+    replace
+        Dataset names allowed to change dtype/shape relative to sealed ``CURRENT``
+        (opt-in G+1 replace). Default: reject schema changes.
+
+    Returns
+    -------
+    int
+        Generation id sealed (or that would be sealed when ``dry_run`` is true).
     """
     root = Path(package).expanduser()
-    sealed = _native.package_publish(root, generation, list(part_ids))
+    sealed = _native.package_publish(
+        root,
+        generation,
+        list(part_ids),
+        dry_run=dry_run,
+        replace=list(replace) if replace is not None else None,
+    )
     return int(sealed)
 
 

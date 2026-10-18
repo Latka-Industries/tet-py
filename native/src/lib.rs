@@ -16,11 +16,12 @@ use pyo3::types::PyAny;
 use tempfile::TempDir;
 use tetration::catalog::store::generation_manifest_key;
 use tetration::catalog::{
-    assemble_object_from_ranges, ingest_tet_file, open_s3_package, packed_tet_key, parse_tet_uri,
-    part_id_from_path as core_part_id_from_path, pin_packed_tet, plan_catalog_fetch, publish_parts,
-    publish_staged_parts, read_superblock_at, read_tet_summary_at_store, seal_staged_generation,
-    stage_part, GenerationPin, LocalStore, MemoryStore, OpenedS3Package, PackGenerationOptions,
-    PackageStore, PublishGeneration, ReadAt, S3Config, S3Store, TetFile as CoreTetFile,
+    assemble_object_from_ranges, dry_run_publish_parts_with_options, ingest_tet_file,
+    open_s3_package, packed_tet_key, parse_tet_uri, part_id_from_path as core_part_id_from_path,
+    pin_packed_tet, plan_catalog_fetch, publish_parts_with_options, publish_staged_parts,
+    read_superblock_at, read_tet_summary_at_store, seal_staged_generation, stage_part,
+    GenerationPin, LocalStore, MemoryStore, OpenedS3Package, PackGenerationOptions, PackageStore,
+    PublishGeneration, PublishPartsOptions, ReadAt, S3Config, S3Store, TetFile as CoreTetFile,
     TetFileSummaryV1, TetOpenTarget, TetPackage, WritePart,
 };
 use tetration::query::{
@@ -834,22 +835,38 @@ fn package_ingest(
 
 /// Seal `part_ids` into generation `generation` (`None` = next id after `CURRENT`).
 ///
+/// When `dry_run` is true, run claim / schema checks only (no seal, no `CURRENT` flip).
+/// `replace` lists dataset names allowed to change dtype/shape vs sealed `CURRENT`.
+///
 /// # Errors
 ///
-/// [`CatalogError`] when parts are missing, claims overlap, or the publish lock is held.
+/// [`CatalogError`] when parts are missing, claims overlap, schema conflicts, or the
+/// publish lock is held.
 #[pyfunction]
+#[pyo3(signature = (package, generation, part_ids, *, dry_run=false, replace=None))]
 #[allow(clippy::needless_pass_by_value)]
 fn package_publish(
     package: PathBuf,
     generation: Option<u64>,
     part_ids: Vec<String>,
+    dry_run: bool,
+    replace: Option<Vec<String>>,
 ) -> PyResult<u64> {
     let pkg = TetPackage::open(&package).map_err(|err| catalog_err(&err))?;
     let generation = match generation {
         Some(generation) => generation,
         None => pkg.next_generation().map_err(|err| catalog_err(&err))?,
     };
-    publish_parts(&pkg, generation, &part_ids).map_err(|err| catalog_err(&err))?;
+    let options = PublishPartsOptions {
+        replace: replace.unwrap_or_default(),
+    };
+    if dry_run {
+        let validation = dry_run_publish_parts_with_options(&pkg, generation, &part_ids, &options)
+            .map_err(|err| catalog_err(&err))?;
+        return Ok(validation.generation);
+    }
+    publish_parts_with_options(&pkg, generation, &part_ids, &options)
+        .map_err(|err| catalog_err(&err))?;
     Ok(generation)
 }
 
