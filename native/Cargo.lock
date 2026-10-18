@@ -2090,9 +2090,9 @@ dependencies = [
 
 [[package]]
 name = "tetration"
-version = "0.3.5"
+version = "0.3.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a0fc4dd192159a0df2f7f8ca14b481e655b1687d02e0f0bd473ead60cdaca769"
+checksum = "cab5b8eb8c48414d7d5240d2bd7147bbf91d4dd0c2060f8d35122eb3dd4d605d"
 dependencies = [
  "argus-chunk",
  "bytemuck",

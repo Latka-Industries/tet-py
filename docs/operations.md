@@ -584,6 +584,8 @@ with tet.open("demo.tet.d") as f:
 
 `ingest` copies one sealed `.tet` into `staging/<session>/` and writes `PART_META`. `publish` merges the named parts, seals `generations/<G>/packed.tet`, and updates `CURRENT`. Pass `generation=` to choose `G`; the default is one past the current pointer. This does not expose concurrent shard writers.
 
+`tet.pack("demo.tet.d", "demo.tet")` copies the sealed `CURRENT` image to a standalone `.tet`. Pass `remove_package=True` to delete the package only after size/hash/layout verify (close pinned readers first).
+
 ### S3-compatible store
 
 `S3Store.connect` takes endpoint and credentials as arguments (not embedded in a URI). Parallel writers each call `ingest` with a unique `session_id`; one `publish` seals the generation and CAS-flips `CURRENT`. `open("current")` or `open("g/<id>")` pins once — a later publish does not retarget that handle. `tet.open("s3://bucket/prefix")` (optional `?generation=N`) pins the same way from `TETRATION_S3_*` and range-reads on query; it does not download the whole object. `S3Store.open` still materializes `packed.tet`. `tet.convert("s3://bucket/object.ext", dst)` downloads that one foreign object and runs the local importer. `tet.convert("s3://bucket/store.zarr", dst)` opens the Zarr through the zarr library and GETs each chunk as needed. Neither path opens a tet package.

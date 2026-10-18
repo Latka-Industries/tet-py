@@ -19,9 +19,9 @@ use tetration::catalog::{
     assemble_object_from_ranges, ingest_tet_file, open_s3_package, packed_tet_key, parse_tet_uri,
     part_id_from_path as core_part_id_from_path, pin_packed_tet, plan_catalog_fetch, publish_parts,
     publish_staged_parts, read_superblock_at, read_tet_summary_at_store, seal_staged_generation,
-    stage_part, GenerationPin, LocalStore, MemoryStore, OpenedS3Package, PackageStore,
-    PublishGeneration, ReadAt, S3Config, S3Store, TetFile as CoreTetFile, TetFileSummaryV1,
-    TetOpenTarget, TetPackage, WritePart,
+    stage_part, GenerationPin, LocalStore, MemoryStore, OpenedS3Package, PackGenerationOptions,
+    PackageStore, PublishGeneration, ReadAt, S3Config, S3Store, TetFile as CoreTetFile,
+    TetFileSummaryV1, TetOpenTarget, TetPackage, WritePart,
 };
 use tetration::query::{
     execute_query_document, materialize_query_selection, materialize_query_transform_ram,
@@ -853,6 +853,37 @@ fn package_publish(
     Ok(generation)
 }
 
+/// Copy a sealed generation's `packed.tet` to a standalone `.tet`.
+///
+/// When `remove_package` is true, delete the `.tet.d` only after a verified copy
+/// (same as `tet pack --remove-package`).
+///
+/// # Errors
+///
+/// [`CatalogError`] when the package or generation is missing, the destination exists,
+/// verify fails, or remove is refused.
+#[pyfunction]
+#[pyo3(signature = (package, dest, generation=None, remove_package=false))]
+#[allow(clippy::needless_pass_by_value)]
+fn package_pack(
+    package: PathBuf,
+    dest: PathBuf,
+    generation: Option<u64>,
+    remove_package: bool,
+) -> PyResult<u64> {
+    let pkg = TetPackage::open(&package).map_err(|err| catalog_err(&err))?;
+    let generation = match generation {
+        Some(generation) => generation,
+        None => pkg
+            .current()
+            .map_err(|err| catalog_err(&err))?
+            .ok_or_else(|| CatalogError::new_err("package has no CURRENT generation"))?,
+    };
+    pkg.pack_generation_with(generation, &dest, &PackGenerationOptions { remove_package })
+        .map_err(|err| catalog_err(&err))?;
+    Ok(generation)
+}
+
 /// Register the `_native` module: exceptions, `open`, `TetFile`, `core_version`.
 #[pymodule]
 fn _native(m: &Bound<'_, PyModule>) -> PyResult<()> {
@@ -870,6 +901,7 @@ fn _native(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(part_id_from_path, m)?)?;
     m.add_function(wrap_pyfunction!(package_ingest, m)?)?;
     m.add_function(wrap_pyfunction!(package_publish, m)?)?;
+    m.add_function(wrap_pyfunction!(package_pack, m)?)?;
     m.add_class::<PyTetFile>()?;
     m.add_class::<PyMemoryStore>()?;
     m.add_class::<PyS3Store>()?;

@@ -338,3 +338,35 @@ def publish(
     root = Path(package).expanduser()
     sealed = _native.package_publish(root, generation, list(part_ids))
     return int(sealed)
+
+
+def pack(
+    package: str | PathLike[str],
+    dest: str | PathLike[str],
+    *,
+    generation: int | None = None,
+    remove_package: bool = False,
+) -> int:
+    """Copy a sealed generation's ``packed.tet`` to a standalone ``.tet``.
+
+    Parameters
+    ----------
+    package
+        ``.tet.d`` directory.
+    dest
+        Destination ``.tet`` path (must not already exist).
+    generation
+        Generation to pack. Default: ``CURRENT``.
+    remove_package
+        When true, delete the package directory only after a verified copy
+        (same as ``tet pack --remove-package``). Close any readers pinned on
+        that package first.
+
+    Returns
+    -------
+    int
+        Generation id that was packed.
+    """
+    root = Path(package).expanduser()
+    out = Path(dest).expanduser()
+    return int(_native.package_pack(root, out, generation, remove_package))
