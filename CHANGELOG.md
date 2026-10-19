@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+## [0.4.1] - 2026-10-19
+
+### Changed
+
+- Pin tetration **0.4.1** from crates.io and align the package version (**0.4.1**). Closed query `filter` wire (predicate pushdown / zone-map chunk skip) is available via existing JSON/TOML query documents; no new Python API ([THI-550](https://linear.app/thicclatka/issue/THI-550))
+
 ## [0.4.0] - 2026-10-18
 
 ### Changed
