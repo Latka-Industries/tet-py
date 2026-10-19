@@ -36,7 +36,7 @@ fn detect_contiguous_row_major_view(
     if !leading_axis_slabs(plan) {
         return None;
     }
-    let expected_raw = plan.logical_f32_element_count.checked_mul(elem_size)? as u64;
+    let expected_raw = plan.logical_element_count.checked_mul(elem_size)? as u64;
     if expected_raw == 0 {
         return None;
     }

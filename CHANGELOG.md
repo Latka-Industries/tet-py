@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-10-18
+
+### Changed
+
+- Pin tetration **0.4.0** from crates.io and align the package version (**0.4.0**). Native NumPy export uses `ReadPlan.logical_element_count` (THI-540) ([THI-542](https://linear.app/thicclatka/issue/THI-542))
+
 ## [0.3.8] - 2026-10-18
 
 ### Changed
