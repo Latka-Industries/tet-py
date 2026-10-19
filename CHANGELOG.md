@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+## [0.4.2] - 2026-10-19
+
+### Changed
+
+- Pin tetration **0.4.2** from crates.io and align the package version (**0.4.2**). Closed `group_by` and `pipeline` wire is available via existing JSON/TOML query documents passed to `execute`; no new Python API ([THI-556](https://linear.app/thicclatka/issue/THI-556))
+
 ## [0.4.1] - 2026-10-19
 
 ### Changed
