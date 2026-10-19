@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+## [0.4.3] - 2026-10-19
+
+### Changed
+
+- Pin tetration **0.4.3** from crates.io and align the package version (**0.4.3**). Store prune stays on `tet gc` (including `s3://`); no new Python API ([THI-560](https://linear.app/thicclatka/issue/THI-560))
+
 ## [0.4.2] - 2026-10-19
 
 ### Changed
