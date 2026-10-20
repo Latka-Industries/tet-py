@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-10-20
+
+### Changed
+
+- Pin tetration **0.5.0** from crates.io and align the package version (**0.5.0**). Distributed fold stays on the Rust `query::distributed` API; no new Python wrapper ([THI-581](https://linear.app/thicclatka/issue/THI-581))
+
 ## [0.4.5] - 2026-10-20
 
 ### Changed
