@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+## [0.5.3] - 2026-10-20
+
+### Changed
+
+- Pin tetration **0.5.3** from crates.io and align the package version (**0.5.3**). Conformance pack grow on the crate; no new Python API ([THI-605](https://linear.app/thicclatka/issue/THI-605))
+
 ## [0.5.2] - 2026-10-20
 
 ### Changed
