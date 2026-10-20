@@ -15,7 +15,6 @@ Python bindings for [**Tetration**](https://github.com/Latka-Industries/tetratio
 | **Rust core** | [`tetration`](https://crates.io/crates/tetration) (linked at build time) |
 | **CLI** | [`tet`](https://github.com/Latka-Industries/tetration) binary from the main repo |
 
-Do **not** `pip install tetration` — that PyPI name is unrelated math code.
 
 ## Quick start
 
