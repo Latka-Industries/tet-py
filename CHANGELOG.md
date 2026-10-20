@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+## [0.4.5] - 2026-10-20
+
+### Changed
+
+- Pin tetration **0.4.5** from crates.io and align the package version (**0.4.5**). Optional value-posting skips for exact `filter.eq` come through existing plan JSON (`index_filter_skipped_chunks`); no new Python API ([THI-574](https://linear.app/thicclatka/issue/THI-574))
+
 ## [0.4.4] - 2026-10-19
 
 ### Changed
