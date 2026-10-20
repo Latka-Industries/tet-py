@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+## [0.4.4] - 2026-10-19
+
+### Changed
+
+- Pin tetration **0.4.4** from crates.io and align the package version (**0.4.4**). Closed `filter` now applies per cell inside kept chunks via the crate; no new Python API ([THI-569](https://linear.app/thicclatka/issue/THI-569))
+
 ## [0.4.3] - 2026-10-19
 
 ### Changed
