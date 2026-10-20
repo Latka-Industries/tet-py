@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+## [0.5.1] - 2026-10-20
+
+### Changed
+
+- Pin tetration **0.5.1** from crates.io and align the package version (**0.5.1**). Declared science/media attrs remain via footer metadata / `tet semantics` on the crate; no new Python metadata ORM ([THI-585](https://linear.app/thicclatka/issue/THI-585))
+
 ## [0.5.0] - 2026-10-20
 
 ### Changed
