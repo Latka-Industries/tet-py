@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+## [0.6.2] - 2026-10-21
+
+### Changed
+
+- Pin tetration **0.6.2** from crates.io and align the package version (**0.6.2**). Label-value `group_by` (`by: labels`) on the crate; no new Python API ([THI-596](https://linear.app/thicclatka/issue/THI-596))
+
 ## [0.6.1] - 2026-10-21
 
 ### Changed
