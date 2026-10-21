@@ -1,6 +1,6 @@
 [package]
 name = "tet-py"
-version = "0.5.3"
+version = "0.5.4"
 edition = "2021"
 rust-version = "1.95"
 description = "Python extension for Tetration .tet files"
@@ -16,4 +16,4 @@ pyo3 = { version = "0.28.3", features = ["extension-module", "abi3-py311"] }
 numpy = "0.28.0"
 serde_json = "1.0"
 tempfile = "3"
-tetration = { version = "0.5.3", default-features = false, features = ["tetration-s3"] }
+tetration = { version = "0.5.4", default-features = false, features = ["tetration-s3"] }

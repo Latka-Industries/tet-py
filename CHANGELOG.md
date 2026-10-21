@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+## [0.5.4] - 2026-10-20
+
+### Changed
+
+- Pin tetration **0.5.4** from crates.io and align the package version (**0.5.4**). Crate hygiene + query-wire fuzz; no new Python API ([THI-604](https://linear.app/thicclatka/issue/THI-604))
+
 ## [0.5.3] - 2026-10-20
 
 ### Changed
