@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+## [0.6.3] - 2026-10-21
+
+### Changed
+
+- Pin tetration **0.6.3** from crates.io and align the package version (**0.6.3**). Window `pad` / `step` / `align` / `min_count` + multi-dtype folds on the crate; no new Python API ([THI-606](https://linear.app/thicclatka/issue/THI-606))
+
 ## [0.6.2] - 2026-10-21
 
 ### Changed
