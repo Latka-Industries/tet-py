@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-10-21
+
+### Changed
+
+- Pin tetration **0.6.0** from crates.io and align the package version (**0.6.0**). Windowed stats (`window` wire) on the crate; no new Python API ([THI-595](https://linear.app/thicclatka/issue/THI-595))
+
 ## [0.5.4] - 2026-10-20
 
 ### Changed
