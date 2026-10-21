@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+## [0.6.4] - 2026-10-21
+
+### Changed
+
+- Pin tetration **0.6.4** from crates.io and align the package version (**0.6.4**). Crate hygiene + broader benches + ephemeral `write: switch` spill cleanup; no new Python API ([THI-607](https://linear.app/thicclatka/issue/THI-607) / [THI-608](https://linear.app/thicclatka/issue/THI-608))
+
 ## [0.6.3] - 2026-10-21
 
 ### Changed
