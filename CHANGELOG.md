@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+## [0.7.0] - 2026-10-22
+
+### Changed
+
+- Pin tetration **0.7.0** from crates.io and align the package version (**0.7.0**). Embedded ZONE/INDEX footer spills (`history_version = 2`); convert/writer auto-embed; standalone `packed_sha256` placeholder; value-postings early-abort; no new Python API ([THI-627](https://linear.app/thicclatka/issue/THI-627))
+
 ## [0.6.6] - 2026-10-21
 
 ### Changed
