@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+## [0.6.5] - 2026-10-21
+
+### Changed
+
+- Pin tetration **0.6.5** from crates.io and align the package version (**0.6.5**). Optional `sorted_axis_range` INDEX pushdown + fold dense-slab speedups on the crate; no new Python API ([THI-613](https://linear.app/thicclatka/issue/THI-613))
+
 ## [0.6.4] - 2026-10-21
 
 ### Changed
