@@ -1,20 +1,33 @@
 name: CI
 
+# Prefer `paths` (allowlist) over `paths-ignore`: run when Rust/Python build inputs change.
+# Docs-only / LICENSE PRs skip the suite (required checks stay pending — merge with admin
+# bypass or drop the required-check gate for docs PRs).
 on:
   push:
     branches: [main, master, dev]
-    paths-ignore:
-      - "docs/**"
-      - "**.md"
-      - "LICENSE*"
-      - ".gitignore"
+    paths:
+      - "**/*.rs"
+      - "**/*.py"
+      - "**/Cargo.toml"
+      - "**/Cargo.lock"
+      - "pyproject.toml"
+      - "uv.lock"
+      - ".mise.toml"
+      - ".github/workflows/ci.yml"
+      - ".github/scripts/**"
   pull_request:
     branches: [main, master, dev]
-    paths-ignore:
-      - "docs/**"
-      - "**.md"
-      - "LICENSE*"
-      - ".gitignore"
+    paths:
+      - "**/*.rs"
+      - "**/*.py"
+      - "**/Cargo.toml"
+      - "**/Cargo.lock"
+      - "pyproject.toml"
+      - "uv.lock"
+      - ".mise.toml"
+      - ".github/workflows/ci.yml"
+      - ".github/scripts/**"
 
 jobs:
   test:
