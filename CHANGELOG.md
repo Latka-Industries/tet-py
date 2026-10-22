@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+## [0.7.1] - 2026-10-22
+
+### Changed
+
+- Pin tetration **0.7.1** from crates.io and align the package version (**0.7.1**). Crate distributed boundary RFC + localhost N-process harness (`tet worker`); OOC window Rayon fix; no new Python API ([THI-615](https://linear.app/thicclatka/issue/THI-615) / [THI-618](https://linear.app/thicclatka/issue/THI-618))
+
 ## [0.7.0] - 2026-10-22
 
 ### Changed
