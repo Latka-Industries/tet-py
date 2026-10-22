@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+## [0.6.6] - 2026-10-21
+
+### Changed
+
+- Pin tetration **0.6.6** from crates.io and align the package version (**0.6.6**). Optional `coord_label_postings` + closed `label_filter` on the crate; package-root INDEX pushdown + OOC filter correctness; no new Python API ([THI-614](https://linear.app/thicclatka/issue/THI-614))
+
 ## [0.6.5] - 2026-10-21
 
 ### Changed
