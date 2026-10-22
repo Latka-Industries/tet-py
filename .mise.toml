@@ -2,8 +2,39 @@
 rust = "1.95"
 uv = "latest"
 
+[tasks.sync]
+description = "uv sync with dev + convert extras (matches CI)"
+run = "uv sync --extra dev --extra convert"
+
 [tasks.develop]
+description = "Build/install editable extension (maturin)"
+depends = ["sync"]
 run = "uv run maturin develop"
 
+[tasks.fmt]
+description = "cargo fmt on the native crate"
+run = "cargo fmt --all --manifest-path native/Cargo.toml"
+
+[tasks.clippy]
+description = "cargo clippy -D warnings on the native crate"
+run = "cargo clippy --manifest-path native/Cargo.toml -- -D warnings"
+
 [tasks.mypy]
-run = "uv run mypy"
+description = "mypy on python/tet"
+depends = ["develop"]
+run = "uv run mypy python/tet"
+
+[tasks.test]
+description = "pytest (quiet)"
+depends = ["develop"]
+run = "uv run pytest -q"
+
+[tasks."test:verbose"]
+description = "pytest with output"
+depends = ["develop"]
+run = "uv run pytest -vv"
+
+[tasks.check]
+description = "fmt + clippy + develop + mypy + pytest (local CI analog)"
+depends = ["fmt", "clippy", "mypy", "test"]
+run = "echo check ok"

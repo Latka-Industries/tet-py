@@ -86,10 +86,11 @@ Endpoint and credentials are arguments or `TETRATION_S3_*` (not in the URI). `te
 ## Develop
 
 ```bash
-uv sync --extra dev
-mise run develop          # or: uv run maturin develop
-uv run pytest -q
-uv run mypy python/tet
+mise run sync             # uv sync --extra dev --extra convert
+mise run develop          # maturin develop
+mise run test             # pytest -q
+mise run mypy
+mise run check            # fmt + clippy + mypy + pytest
 ```
 
 Requires Python **3.11+** and Rust **1.95+** ([`.mise.toml`](.mise.toml)). Fixtures: `tests/fixtures/`.
