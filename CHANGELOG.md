@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+## [0.7.3] - 2026-10-23
+
+### Changed
+
+- Pin tetration **0.7.3** from crates.io and align the package version (**0.7.3**). Crate semantics profiles / `SEMANTICS.json` / lint / PROV history (THI-612); no new Python API
+
 ## [0.7.2] - 2026-10-23
 
 ### Changed
