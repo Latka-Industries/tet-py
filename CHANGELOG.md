@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+## [0.7.2] - 2026-10-23
+
+### Changed
+
+- Pin tetration **0.7.2** from crates.io and align the package version (**0.7.2**). Crate distributed materialize / transform / tier-C (`write: ram`); no new Python API ([THI-617](https://linear.app/thicclatka/issue/THI-617))
+
 ## [0.7.1] - 2026-10-22
 
 ### Changed
