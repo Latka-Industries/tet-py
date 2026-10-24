@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+## [0.8.1] - 2026-10-24
+
+### Changed
+
+- Pin tetration **0.8.1** from crates.io and align the package version (**0.8.1**). Crate metadata wizard + chunk-aligned `group_by` fast path / wire polish (THI-638 / #189); no new Python API
+
 ## [0.8.0] - 2026-10-23
 
 ### Changed
