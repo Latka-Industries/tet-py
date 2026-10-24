@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+## [0.8.0] - 2026-10-23
+
+### Changed
+
+- Pin tetration **0.8.0** from crates.io and align the package version (**0.8.0**). Crate one-file TOML apply / scaffold annotate / ProfileContract palette / SEMANTICS.json `dim_names` (THI-632); no new Python API
+
 ## [0.7.3] - 2026-10-23
 
 ### Changed
