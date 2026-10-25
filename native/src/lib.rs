@@ -1,7 +1,8 @@
 //! `PyO3` extension: thin wrapper over the `tetration` crate.
 //!
-//! Python sees `tet._native`: `open`, `TetFile`, `TetError`, `CatalogError`, `core_version`.
-//! Query documents are parsed/validated in Rust; responses are JSON strings for the pure-Python layer.
+//! Python sees `tet._native`: `open`, `TetFile`, `TetError`, `CatalogError`, `core_version`,
+//! `run_job`. Query documents are parsed/validated in Rust; responses are JSON strings for the
+//! pure-Python layer.
 
 mod numpy_export;
 mod numpy_write;
@@ -24,6 +25,7 @@ use tetration::catalog::{
     PublishGeneration, PublishPartsOptions, ReadAt, S3Config, S3Store, TetFile as CoreTetFile,
     TetFileSummaryV1, TetOpenTarget, TetPackage, WritePart,
 };
+use tetration::job::{run_job_path, JobError, RunJobOptions};
 use tetration::query::{
     execute_query_document, materialize_query_selection, materialize_query_transform_ram,
     parse_query_json, parse_query_text, plan_query_fetch, plan_read_for_document,
@@ -319,6 +321,32 @@ impl PyTetFile {
 #[pyfunction]
 fn core_version() -> &'static str {
     env!("TETRATION_VERSION")
+}
+
+fn job_err(err: &JobError) -> PyErr {
+    TetError::new_err(err.to_string())
+}
+
+/// Run a `tet run` job file via [`tetration::job::run_job_path`].
+///
+/// Returns the [`JobReport`](tetration::job::JobReport) as a JSON string (same shape as
+/// `tet run --json` on success). Does not re-implement steps in Python.
+///
+/// # Errors
+///
+/// [`TetError`] for parse / pre-flight / step failures (same messages as the CLI).
+#[pyfunction]
+#[pyo3(signature = (path, *, root=None, dry_run=false))]
+#[allow(clippy::needless_pass_by_value)]
+fn run_job(path: PathBuf, root: Option<PathBuf>, dry_run: bool) -> PyResult<String> {
+    let opts = RunJobOptions {
+        root,
+        dry_run,
+        allow_interactive: false,
+        record_query_history: false,
+    };
+    let report = run_job_path(&path, &opts).map_err(|e| job_err(&e))?;
+    serde_json::to_string(&report).map_err(|e| TetError::new_err(e.to_string()))
 }
 
 /// Open a `.tet` file read-only via mmap.
@@ -908,6 +936,7 @@ fn _native(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add("TetError", m.py().get_type::<TetError>())?;
     m.add("CatalogError", m.py().get_type::<CatalogError>())?;
     m.add_function(wrap_pyfunction!(core_version, m)?)?;
+    m.add_function(wrap_pyfunction!(run_job, m)?)?;
     m.add_function(wrap_pyfunction!(open, m)?)?;
     m.add_function(wrap_pyfunction!(open_package, m)?)?;
     m.add_function(wrap_pyfunction!(open_uri, m)?)?;

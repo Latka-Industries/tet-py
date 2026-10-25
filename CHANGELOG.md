@@ -2,6 +2,16 @@
 
 ## [Unreleased]
 
+## [0.8.2] - 2026-10-25
+
+### Added
+
+- `tet.run_job(path, *, root=None, dry_run=False)` — thin wrapper over Rust `tetration::job::run_job_path` (same engine as `tet run`). Returns the `JobReport` as a dict (`steps[].data` included). No Python job DSL (THI-648 / THI-645).
+
+### Changed
+
+- Pin tetration **0.8.2** from crates.io and align the package version (**0.8.2**).
+
 ## [0.8.1] - 2026-10-24
 
 ### Changed

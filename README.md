@@ -73,6 +73,10 @@ f = store.open("current")  # pin; later publish does not retarget f
 
 Endpoint and credentials are arguments or `TETRATION_S3_*` (not in the URI). `tet.open("s3://bucket/prefix")` range-reads the pinned package. `S3Store.open` still downloads `packed.tet`. See [`docs/operations.md`](docs/operations.md#packages).
 
+## Job files
+
+`tet.run_job("job.toml")` runs a stock `tet run` job through the Rust executor (same as the CLI). Returns the `JobReport` dict; pass `dry_run=True` to plan only. Relative paths resolve against the job file's directory (or `root=`).
+
 ## Documentation
 
 | Topic | Where |

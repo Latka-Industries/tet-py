@@ -1934,7 +1934,7 @@ dependencies = [
 
 [[package]]
 name = "tet-py"
-version = "0.8.1"
+version = "0.8.2"
 dependencies = [
  "numpy",
  "pyo3",
@@ -1945,9 +1945,9 @@ dependencies = [
 
 [[package]]
 name = "tetration"
-version = "0.8.1"
+version = "0.8.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "165d47f3b9c378e8f5b097a4dd368f0bb438ef2d2bd04b9fdad8259cc900d46e"
+checksum = "89c81a9e06e4661f792c73a3f8a1345c0d63c2ed6e0e64c7270cb5352a7eb496"
 dependencies = [
  "argus-chunk",
  "bytemuck",

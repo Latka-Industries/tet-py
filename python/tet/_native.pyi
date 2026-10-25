@@ -99,3 +99,9 @@ def package_pack(
     remove_package: bool = False,
 ) -> int: ...
 def core_version() -> str: ...
+def run_job(
+    path: Path,
+    *,
+    root: Path | None = None,
+    dry_run: bool = False,
+) -> str: ...
