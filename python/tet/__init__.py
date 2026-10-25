@@ -7,9 +7,11 @@ or as module-level exports.
 
 from __future__ import annotations
 
+import json
 import os
 from os import PathLike
 from pathlib import Path
+from typing import Any, cast
 
 import numpy as np
 
@@ -64,6 +66,44 @@ def typing_stub(path: str | PathLike[str]) -> str:
     """
     with TetFile.open(path) as f:
         return f.typing_stub()
+
+
+def run_job(
+    path: str | PathLike[str],
+    *,
+    root: str | PathLike[str] | None = None,
+    dry_run: bool = False,
+) -> dict[str, Any]:
+    """Run a ``tet run`` job file through the Rust executor.
+
+    Thin wrapper over ``tetration::job::run_job_path`` — the same engine as
+    ``tet run``. Steps are not re-implemented in Python.
+
+    Parameters
+    ----------
+    path :
+        Job file (``.toml`` or ``.json``). ``~`` is expanded.
+    root :
+        Resolve relative step paths against this directory. Defaults to the job
+        file's parent (same as the CLI).
+    dry_run :
+        Validate and describe every step without executing.
+
+    Returns
+    -------
+    dict
+        The ``JobReport`` (``dry_run``, ``root``, ``steps``, ``elapsed_secs``).
+        Each executed step includes ``data`` when present.
+
+    Raises
+    ------
+    TetError
+        Parse, pre-flight, or step failure (same messages as ``tet run``).
+    """
+    job_path = Path(os.fspath(path)).expanduser()
+    root_path = Path(os.fspath(root)).expanduser() if root is not None else None
+    raw = _native.run_job(job_path, root=root_path, dry_run=dry_run)
+    return cast(dict[str, Any], json.loads(raw))
 
 
 def open(path: str | PathLike[str]) -> TetFile:
@@ -130,6 +170,7 @@ __all__ = [
     "pack",
     "publish",
     "full_selection",
+    "run_job",
     "selection_slices",
     "TetError",
     "TetFile",
