@@ -55,6 +55,6 @@ def test_run_job_step_failure_raises(tmp_path: Path) -> None:
         tet.run_job(job)
 
 
-def test_versions_pin_082() -> None:
-    assert tet.__version__ == "0.8.2"
-    assert tet.core_version() == "0.8.2"
+def test_versions_pin_083() -> None:
+    assert tet.__version__ == "0.8.3"
+    assert tet.core_version() == "0.8.3"

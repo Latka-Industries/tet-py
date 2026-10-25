@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+## [0.8.3] - 2026-10-25
+
+### Changed
+
+- Pin tetration **0.8.3** from crates.io and align the package version (**0.8.3**). Crate trust-boundary docs + `parse_job` cargo-fuzz (THI-650 / THI-654); pin-only — no new Python API.
+
 ## [0.8.2] - 2026-10-25
 
 ### Added

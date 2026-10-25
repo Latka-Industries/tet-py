@@ -9,4 +9,4 @@ Prefer the site: **[docs.tetration.sh/python](https://docs.tetration.sh/python/)
 | [README.md](../README.md) | Install, convert, packages, develop commands |
 | [Roadmap](https://docs.tetration.sh/roadmap) | Shipped + prospective (docs site) |
 
-Current package line: **0.8.2** (pins tetration **0.8.2** from crates.io).
+Current package line: **0.8.3** (pins tetration **0.8.3** from crates.io).
